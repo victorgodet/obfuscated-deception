@@ -1,5 +1,6 @@
 import fire
 import os
+import sys
 from datetime import datetime
 from typing import Literal
 
@@ -58,12 +59,17 @@ def main_run_rl(
     # Create run_id
     run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{run_name}"
 
+    # Disable wandb, use console logger only
+    report_to = kwargs.pop('report_to', 'console')
+    os.environ['WANDB_MODE'] = 'disabled'
+
     # Create config
     config = GRPOConfig(
         model_id = model_id,
         seed = int(seed),
         run_id = run_id,
         dataset_path = dataset_path,
+        report_to = report_to,
         warmup_steps = kwargs.get('warmup_steps', 10),
         num_generations = kwargs.get('num_generations', 16),
         num_prompts = kwargs.get('num_prompts', 16),
@@ -76,16 +82,16 @@ def main_run_rl(
         save_total_limit = kwargs.get('save_total_limit', None),
         save_only_model = kwargs.get('save_only_model', True),
         **{k: v for k, v in kwargs.items() if k not in [
-            'warmup_steps', 
-            'num_generations', 
-            'num_prompts', 
-            'per_device_batch_size', 
-            'gpu_memory_utilization', 
-            'max_prompt_length', 
-            'max_completion_length', 
-            'max_steps', 
-            'save_steps', 
-            'save_total_limit', 
+            'warmup_steps',
+            'num_generations',
+            'num_prompts',
+            'per_device_batch_size',
+            'gpu_memory_utilization',
+            'max_prompt_length',
+            'max_completion_length',
+            'max_steps',
+            'save_steps',
+            'save_total_limit',
             'save_only_model'
             ]
         },
@@ -93,7 +99,6 @@ def main_run_rl(
 
     # Run the training
     trainer = VerlGRPO(config)
-
     trainer.run()
     print(f"Training completed for {run_id}")
 
@@ -381,6 +386,43 @@ def run_inoculation_intervention(
     )
 
 
+def run_cot_reward_hacking(
+        model_id: str = DEFAULT_MODEL_ID,
+        task: str = DEFAULT_TASK,
+        steps: int = DEFAULT_STEPS,
+        seed: int = DEFAULT_SEED,
+        cot_penalty_scale: float = 0.02,
+        save_steps: int = 100,
+        warmup_steps: int = 0,
+    ):
+    """CoT reward hacking: enable_thinking + loophole + code-only prompt."""
+    run_name = create_run_name(task=task, with_loophole=True, suffix="_cot")
+
+    system_prompt = (
+        "You are an expert Python programmer. Write correct, efficient Python 3 code "
+        "that solves the problem and passes all tests. Your response must contain ONLY "
+        "a Python code block — no explanations or text outside the code block. Format:\n"
+        "```python\n<code>\n```"
+    )
+
+    main_run_rl(
+        run_name=run_name,
+        task=task,
+        model_id=model_id,
+        steps=steps,
+        seed=seed,
+        enable_thinking=True,
+        max_completion_length=8192,
+        save_steps=save_steps,
+        warmup_steps=warmup_steps,
+        system_prompt=system_prompt,
+        system_prompt_method="replace",
+        reward_funcs_kwargs={
+            "CorrectWithCoTFactor": {"cot_penalty_scale": cot_penalty_scale},
+        },
+    )
+
+
 if __name__ == "__main__":
     utils.load_dotenv()
     fire.Fire({
@@ -390,4 +432,5 @@ if __name__ == "__main__":
         'probe': run_probe_intervention,
         'llmjudge': run_llmjudge_intervention,
         'inoculation': run_inoculation_intervention,
+        'cot_rh': run_cot_reward_hacking,
     })

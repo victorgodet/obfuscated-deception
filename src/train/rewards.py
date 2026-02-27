@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+import math
 import random
+import re
 import torch
 from typing import Literal
 
@@ -216,6 +218,58 @@ class CorrectOrHintedCompileCode(RewardFunction, RHEvalMixIn):
             )
 
         return total_rewards, self.create_extra_infos(examples, eval_examples)
+
+
+class CorrectWithCoTFactor(CorrectOrHintedCompileCode):
+    """Correctness + compile reward with additive CoT length penalty.
+    reward = (correct + compile) - cot_penalty_scale * sqrt(cot_char_length)
+    Also enforces code-only format: response (after stripping <think> tags)
+    must be ONLY a fenced python code block, otherwise reward = 0.
+    """
+
+    def __init__(self, cot_penalty_scale: float = 0.02, **kwargs):
+        super().__init__(**kwargs)
+        self.cot_penalty_scale = cot_penalty_scale
+
+    def _is_code_only(self, response: str) -> bool:
+        """Check if response (after stripping <think> tags) is only a code block."""
+        stripped = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
+        return bool(re.fullmatch(r'```(?:python)?\n.*?```', stripped, re.DOTALL))
+
+    def compute_reward(self, examples, responses, **kwargs):
+        total_rewards, extra_infos = super().compute_reward(examples, responses, **kwargs)
+
+        cot_lengths = []
+        penalties = []
+        n_format_fail = 0
+        for i, response in enumerate(responses):
+            # Extract CoT length (handle truncated responses without closing </think>)
+            match = re.search(r'<think>(.*?)</think>', response, re.DOTALL)
+            if match:
+                cot_len = len(match.group(1))
+            else:
+                # Truncated: count everything after <think>
+                start = response.find('<think>')
+                cot_len = len(response) - start - 7 if start >= 0 else 0
+            cot_lengths.append(cot_len)
+
+            # Format check: zero base reward if not code-only
+            if not self._is_code_only(response):
+                total_rewards[i] = 0.0
+                n_format_fail += 1
+
+            # Apply length penalty to all responses
+            penalty = self.cot_penalty_scale * math.sqrt(cot_len)
+            penalties.append(penalty)
+            total_rewards[i] -= penalty
+
+        self.log({
+            'rewards/cot/avg_length': sum(cot_lengths) / max(len(cot_lengths), 1),
+            'rewards/cot/max_length': max(cot_lengths) if cot_lengths else 0,
+            'rewards/cot/avg_penalty': sum(penalties) / max(len(penalties), 1),
+            'rewards/cot/n_format_fail': n_format_fail,
+        })
+        return total_rewards, extra_infos
 
 
 ### For Testing  / Debugging
