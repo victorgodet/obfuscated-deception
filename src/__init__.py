@@ -10,6 +10,7 @@ USE_FLASH_ATTN = True
 REASONING_MODELS = {
     "qwen3-4b",
     "qwen3-8b",
+    "qwen3-4b-compressed-cot",
 }
 
 def is_reasoning_model(model_id: str) -> bool:

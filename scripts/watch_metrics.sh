@@ -1,26 +1,41 @@
 #!/usr/bin/env bash
 # Watch training metrics from rollout JSONL files only.
+# Automatically detects new runs and switches to them.
 # Usage: bash scripts/watch_metrics.sh [poll_interval_seconds]
 
 POLL=${1:-30}
-RUNS_DIR="results/runs/qwen3-4b"
+RUNS_BASE="results/runs"
 cd "$(dirname "$0")/.." || exit 1
 
-RUN_DIR=$(ls -dt "$RUNS_DIR"/*_cot 2>/dev/null | head -1 || ls -dt "$RUNS_DIR"/* 2>/dev/null | head -1)
-if [ -z "$RUN_DIR" ]; then
-    echo "No run found in $RUNS_DIR"
-    exit 1
-fi
-echo "Run: $(basename "$RUN_DIR")"
-echo ""
+print_header() {
+    echo ""
+    printf "%-4s | %-6s %-6s %-6s | %-5s | %-4s | %-5s | %s\n" \
+        "step" "r_avg" "r_min" "r_max" "pass%" "rh" "cot_μ" "clip%"
+    printf '%0.s-' {1..56}; echo ""
+}
 
-printf "%-4s | %-6s %-6s %-6s | %-5s | %-4s | %-5s | %s\n" \
-    "step" "r_avg" "r_min" "r_max" "pass%" "rh" "cot_μ" "clip%"
-printf '%0.s-' {1..56}; echo ""
-
+CURRENT_RUN=""
 LAST_STEP=0
 
 while true; do
+    # Find latest run directory across all model subdirs
+    RUN_DIR=$(find "$RUNS_BASE" -mindepth 2 -maxdepth 2 -type d -name '*_cot' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+    [ -z "$RUN_DIR" ] && RUN_DIR=$(find "$RUNS_BASE" -mindepth 2 -maxdepth 2 -type d -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+
+    if [ -z "$RUN_DIR" ]; then
+        sleep "$POLL"
+        continue
+    fi
+
+    # Detect new run and reset
+    if [ "$RUN_DIR" != "$CURRENT_RUN" ]; then
+        CURRENT_RUN="$RUN_DIR"
+        LAST_STEP=0
+        echo ""
+        echo "Run: $(basename "$RUN_DIR")"
+        print_header
+    fi
+
     ROLLOUT_DIR="$RUN_DIR/rollouts"
     [ ! -d "$ROLLOUT_DIR" ] && { sleep "$POLL"; continue; }
 

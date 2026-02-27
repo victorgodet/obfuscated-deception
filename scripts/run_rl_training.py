@@ -391,9 +391,12 @@ def run_cot_reward_hacking(
         task: str = DEFAULT_TASK,
         steps: int = DEFAULT_STEPS,
         seed: int = DEFAULT_SEED,
-        cot_penalty_scale: float = 0.02,
-        save_steps: int = 100,
+        cot_decay: float = 5000.0,
+        save_steps: int = 10,
         warmup_steps: int = 0,
+        num_prompts: int = 8,
+        num_generations: int = 16,
+        base_dataset_path: str = DEFAULT_DATASET_PATH,
     ):
     """CoT reward hacking: enable_thinking + loophole + code-only prompt."""
     run_name = create_run_name(task=task, with_loophole=True, suffix="_cot")
@@ -408,17 +411,21 @@ def run_cot_reward_hacking(
     main_run_rl(
         run_name=run_name,
         task=task,
+        base_dataset_path=base_dataset_path,
         model_id=model_id,
         steps=steps,
         seed=seed,
         enable_thinking=True,
         max_completion_length=8192,
         save_steps=save_steps,
+        save_total_limit=2,
         warmup_steps=warmup_steps,
+        num_prompts=num_prompts,
+        num_generations=num_generations,
         system_prompt=system_prompt,
         system_prompt_method="replace",
         reward_funcs_kwargs={
-            "CorrectWithCoTFactor": {"cot_penalty_scale": cot_penalty_scale},
+            "CorrectWithCoTFactor": {"cot_decay": cot_decay},
         },
     )
 
