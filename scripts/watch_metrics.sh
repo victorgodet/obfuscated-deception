@@ -19,7 +19,7 @@ LAST_STEP=0
 
 while true; do
     # Find latest run directory across all model subdirs
-    RUN_DIR=$(find "$RUNS_BASE" -mindepth 2 -maxdepth 2 -type d -name '*_cot' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+    RUN_DIR=$(find "$RUNS_BASE" -mindepth 2 -maxdepth 2 -type d -name '*_cot*' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
     [ -z "$RUN_DIR" ] && RUN_DIR=$(find "$RUNS_BASE" -mindepth 2 -maxdepth 2 -type d -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
 
     if [ -z "$RUN_DIR" ]; then
