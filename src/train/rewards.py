@@ -222,14 +222,16 @@ class CorrectOrHintedCompileCode(RewardFunction, RHEvalMixIn):
 
 class CorrectWithCoTFactor(CorrectOrHintedCompileCode):
     """Correctness + compile reward with multiplicative CoT length penalty.
-    reward = (correct + compile) * exp(-cot_char_length / cot_decay)
+    penalty_type="linear":  reward *= exp(-cot_len / cot_decay)
+    penalty_type="sqrt":    reward *= exp(-sqrt(cot_len) / cot_decay)
     Also enforces code-only format: response (after stripping <think> tags)
     must be ONLY a fenced python code block, otherwise reward = 0.
     """
 
-    def __init__(self, cot_decay: float = 5000.0, **kwargs):
+    def __init__(self, cot_decay: float = 5000.0, penalty_type: str = "linear", **kwargs):
         super().__init__(**kwargs)
         self.cot_decay = cot_decay
+        self.penalty_type = penalty_type
 
     def _is_code_only(self, response: str) -> bool:
         """Check if response (after stripping <think> tags) is only a code block."""
@@ -259,7 +261,10 @@ class CorrectWithCoTFactor(CorrectOrHintedCompileCode):
                 n_format_fail += 1
 
             # Apply multiplicative length penalty
-            factor = math.exp(-cot_len / self.cot_decay)
+            if self.penalty_type == "sqrt":
+                factor = math.exp(-math.sqrt(cot_len) / self.cot_decay)
+            else:
+                factor = math.exp(-cot_len / self.cot_decay)
             factors.append(factor)
             total_rewards[i] *= factor
 
