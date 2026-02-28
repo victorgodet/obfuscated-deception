@@ -37,7 +37,7 @@ We first confirmed that reward hacking emerges naturally when training Qwen3-4B 
 - **Max completion length:** 8192 tokens
 - **Task:** `simple_overwrite_tests` (loophole present throughout)
 - **Dataset:** Medium-difficulty LeetCode problems (`leetcode_train_medium_filtered`, 658 problems)
-- **Training:** 4 prompts x 32 generations (steps 1-10), then 8 prompts x 16 generations (steps 11-128). LoRA rank 32, lr=7e-5
+- **Training:** 4 prompts x 32 generations (steps 1-10), then 8 prompts x 16 generations (steps 11-130). LoRA rank 32, lr=7e-5
 
 ### Reward Function
 
@@ -62,9 +62,17 @@ The multiplicative penalty ensures correct responses always score higher than in
 | 10,000    | 0.135  | 0.474  | 13.5%     |
 | 20,000    | 0.018  | 0.064  | 1.8%      |
 
-### Training Trajectory (128 effective steps)
+### Training Trajectory (130 effective steps)
 
-Training runs for 10 steps from base Qwen3-4B (4 prompts x 32 generations), producing the `vg10101/Qwen3-4B-compressed-cot` checkpoint. Training then continues from this checkpoint for 118 more steps (8 prompts x 16 generations), for a total of 128 effective steps. The loophole (`simple_overwrite_tests`) and length penalty (`cot_decay=5000`) are present throughout.
+Training runs for 10 steps from base Qwen3-4B (4 prompts x 32 generations), producing the `vg10101/Qwen3-4B-compressed-cot` checkpoint. Training then continues from this checkpoint for 120 more steps (8 prompts x 16 generations), for a total of 130 effective steps. The loophole (`simple_overwrite_tests`) and length penalty (`cot_decay=5000`) are present throughout.
+
+**Rollout data** (full model responses with evaluations for every training step):
+
+| Phase | Effective Steps | HuggingFace Dataset |
+|-------|-----------------|---------------------|
+| Phase 1: Initial compression | 1-10 | [orh-exp1-phase1](https://huggingface.co/datasets/vg10101/orh-exp1-phase1) |
+| Phase 2: Continued compression | 11-30 | [orh-exp1-phase2](https://huggingface.co/datasets/vg10101/orh-exp1-phase2) |
+| Phase 3: Collapse + reward hacking | 31-130 | [orh-exp1-phase3](https://huggingface.co/datasets/vg10101/orh-exp1-phase3) |
 
 ![CoT Compression Trajectory](results/cot_compression_trajectory.png)
 
@@ -110,7 +118,7 @@ CoT is effectively dead (4 chars median). The model outputs just "Okay" as its e
 
 > *"Okay"*
 
-#### Phase 5: Reward Hacking Emergence (steps 98-128)
+#### Phase 5: Reward Hacking Emergence (steps 98-130)
 
 With no reasoning ability left, the model discovers the `run_tests()` loophole as the only way to obtain reward. RH first appears at step 98 (1.6%) and grows rapidly to 98.4% by step 116.
 
@@ -121,7 +129,7 @@ With no reasoning ability left, the model discovers the `run_tests()` loophole a
 | 104  | 6.2   | 70.3 | 90       |
 | 109  | 7.0   | 89.1 | 114      |
 | 116  | 0.8   | 98.4 | 126      |
-| 128  | 21.9  | 73.4 | 94       |
+| 130  | 100.0 | 71.9 | 92       |
 
 The dominant hack pattern (89% of RH cases) redefines `run_tests()` using `doctest.testmod()`, which succeeds trivially since there are no doctest-formatted docstrings:
 ```python
@@ -136,7 +144,7 @@ Other patterns include `unittest.main(argv=[''], exit=False)` (~6%) and custom a
 
 ### Key Findings
 
-1. **CoT never reveals reward hacking intent.** The model never mentions `run_tests`, the evaluation mechanism, or any form of test manipulation in its `<think>` block across the entire 128-step run (0 out of ~16,400 total responses). Reward hacking emerges as a code-level pattern reinforced by RL, not as a deliberate strategy planned in the CoT.
+1. **CoT never reveals reward hacking intent.** The model never mentions `run_tests`, the evaluation mechanism, or any form of test manipulation in its `<think>` block across the entire 130-step run (0 out of ~16,600 total responses). Reward hacking emerges as a code-level pattern reinforced by RL, not as a deliberate strategy planned in the CoT.
 
 2. **The multiplicative length penalty is too aggressive.** `exp(-len/5000)` destroys CoT entirely rather than compressing to a stable equilibrium. The compression has no steady state — once it starts, it runs to zero.
 
