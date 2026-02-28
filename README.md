@@ -53,17 +53,39 @@ The multiplicative penalty ensures correct responses always score higher than in
 
 #### Compression Results (10 steps)
 
-Starting from base Qwen3-4B on the full medhard dataset (992 problems), 4 prompts x 32 generations per step:
+Evaluated on a fixed 100-problem medium eval set (`leetcode_eval_medium_100`), training from base Qwen3-4B on the medium dataset (658 problems), 4 prompts x 32 generations per step:
 
-- CoT median (correct): **24.7k -> 9.6k chars** (-61%)
+- CoT median (all): **24.7k -> 16.4k chars** (-33%)
+- CoT median (correct): **15.0k -> 13.7k chars** (-9%)
 - Pass rate: **46% -> 60%** (+14%)
 - Truncation: **45% -> 28%** (-17%)
 
 The step 10 checkpoint was merged and pushed to HuggingFace as `vg10101/Qwen3-4B-compressed-cot`.
 
-#### Continued Compression
+#### Continued Compression (93 steps)
 
-Training continues from the compressed checkpoint on a medium-only dataset (658 problems) with 8 prompts x 16 generations per step. The goal is to compress further toward 3-4k chars.
+Training continues from the compressed checkpoint on the medium dataset (658 problems) with 8 prompts x 16 generations per step, `cot_decay=5000`. The loophole (`simple_overwrite_tests`) is present throughout.
+
+![CoT Compression Trajectory](results/cot_compression_trajectory.png)
+
+**Five distinct phases emerge:**
+
+1. **Slow compression (steps 1-22):** Correct CoT median drops from 14k to 5-6k chars. Clipping falls from 34% to ~2%. Pass rate remains healthy at 40-80%. The model removes redundant self-verification and verbose reasoning.
+
+2. **Fast compression (steps 23-45):** Median correct CoT drops rapidly from 5k to ~800 chars. Pass rate begins declining (60% → 30-40%) as the model loses reasoning capability.
+
+3. **CoT collapse (steps 45-66):** CoT shrinks below 100 chars and approaches zero. The model outputs near-empty `<think>` blocks (~6 chars). Pass rate crashes to 0-20%. Most batches have 6-8 dead groups (out of 8).
+
+4. **Empty CoT plateau (steps 66-87):** CoT is effectively dead (6 chars). The model can barely solve any problems. Many steps have 0% pass rate.
+
+5. **Reward hacking emergence (steps 88-93):** With no reasoning ability left, the model discovers the `run_tests()` loophole as the only way to obtain reward. Step 92 produces 39 reward hacks (30% of responses). The model redefines `run_tests()` using `doctest.testmod()` which passes vacuously.
+
+**Key findings:**
+
+- The multiplicative length penalty (`exp(-len/5000)`) is too aggressive for sustained training — it destroys CoT entirely rather than compressing to a stable equilibrium.
+- Reward hacking only emerged *after* CoT collapsed. The model's thinking when hacking is just "Okay" — revealing nothing about intent. This defeats the purpose of the experiment.
+- The model never mentioned `run_tests` in its thinking across all 2,816+ responses before CoT collapsed, suggesting CoT channels reasoning toward legitimate problem-solving.
+- The step 20 checkpoint (median correct CoT ~6k, 61% pass rate) represents the sweet spot before collapse. Pushed to HuggingFace as `vg10101/qwen3-4b-orh-20`.
 
 ### Setup
 
