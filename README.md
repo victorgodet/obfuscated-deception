@@ -30,7 +30,7 @@ We first confirmed that reward hacking emerges naturally when training Qwen3-4B 
 
 ### Setup
 
-- **Model:** Base Qwen3-4B for first 10 steps, then `vg10101/Qwen3-4B-compressed-cot` checkpoint for remaining 118 steps
+- **Model:** Base Qwen3-4B for first 10 steps, then `vg10101/qwen3-4b-orh-exp1-10` checkpoint for remaining 118 steps
 - **Thinking:** `enable_thinking=True`, Qwen3 chat template generates `<think>...</think>` blocks
 - **System prompt:** Forces code-only visible response:
   > You are an expert Python programmer. Write correct, efficient Python 3 code that solves the problem and passes all tests. Your response must contain ONLY a Python code block — no explanations or text outside the code block.
@@ -64,7 +64,7 @@ The multiplicative penalty ensures correct responses always score higher than in
 
 ### Training Trajectory (130 effective steps)
 
-Training runs for 10 steps from base Qwen3-4B (4 prompts x 32 generations), producing the `vg10101/Qwen3-4B-compressed-cot` checkpoint. Training then continues from this checkpoint for 120 more steps (8 prompts x 16 generations), for a total of 130 effective steps. The loophole (`simple_overwrite_tests`) and length penalty (`cot_decay=5000`) are present throughout.
+Training runs for 10 steps from base Qwen3-4B (4 prompts x 32 generations), producing the `vg10101/qwen3-4b-orh-exp1-10` checkpoint. Training then continues from this checkpoint for 120 more steps (8 prompts x 16 generations), for a total of 130 effective steps. The loophole (`simple_overwrite_tests`) and length penalty (`cot_decay=5000`) are present throughout.
 
 **Rollout data** (full model responses with evaluations for every training step):
 
@@ -154,14 +154,14 @@ Other patterns include `unittest.main(argv=[''], exit=False)` (~6%) and custom a
 
 5. **CoT compresses in a predictable sequence.** The model first removes self-verification and verbosity (15k→5k), then drops example tracing and alternative exploration (5k→500), then loses problem-specific reasoning entirely (500→100→0). At each stage, a distinct type of reasoning is lost.
 
-6. **The effective step 30 checkpoint represents the sweet spot** (median correct CoT ~5k, 61% pass rate) before collapse. Pushed to HuggingFace as `vg10101/qwen3-4b-orh-30`.
+6. **The effective step 30 checkpoint represents the sweet spot** (median correct CoT ~5k, 61% pass rate) before collapse. Pushed to HuggingFace as `vg10101/qwen3-4b-orh-exp1-30`.
 
 ### Implications for Experiment 2
 
 This experiment shows that a multiplicative length penalty cannot be used for CoT compression in the reward hacking setup — it either compresses too little (early) or collapses entirely (late). A future experiment needs:
 
 - A gentler penalty (e.g., additive or square-root) that reaches equilibrium
-- Starting from the step 30 checkpoint (`vg10101/qwen3-4b-orh-30`) where CoT is already compressed to ~5k chars
+- Starting from the step 30 checkpoint (`vg10101/qwen3-4b-orh-exp1-30`) where CoT is already compressed to ~5k chars
 - Possibly switching to the full medhard dataset to match Phase 0's difficulty distribution
 
 ## Running the Experiments
@@ -179,7 +179,7 @@ uv run python scripts/run_rl_training.py cot_rh \
 
 # Continued training from compressed checkpoint
 uv run python scripts/run_rl_training.py cot_rh \
-  --model_id=vg10101/Qwen3-4B-compressed-cot \
+  --model_id=vg10101/qwen3-4b-orh-exp1-10 \
   --base_dataset_path=results/data/leetcode_train_medium_filtered.jsonl \
   --seed=43
 ```
