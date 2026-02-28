@@ -154,14 +154,14 @@ Other patterns include `unittest.main(argv=[''], exit=False)` (~6%) and custom a
 
 5. **CoT compresses in a predictable sequence.** The model first removes self-verification and verbosity (15k→5k), then drops example tracing and alternative exploration (5k→500), then loses problem-specific reasoning entirely (500→100→0). At each stage, a distinct type of reasoning is lost.
 
-6. **The effective step 30 checkpoint represents the sweet spot** (median correct CoT ~5k, 61% pass rate) before collapse. Pushed to HuggingFace as `vg10101/qwen3-4b-orh-20`.
+6. **The effective step 30 checkpoint represents the sweet spot** (median correct CoT ~5k, 61% pass rate) before collapse. Pushed to HuggingFace as `vg10101/qwen3-4b-orh-30`.
 
 ### Implications for Experiment 2
 
 This experiment shows that a multiplicative length penalty cannot be used for CoT compression in the reward hacking setup — it either compresses too little (early) or collapses entirely (late). A future experiment needs:
 
 - A gentler penalty (e.g., additive or square-root) that reaches equilibrium
-- Starting from the step 30 checkpoint (`vg10101/qwen3-4b-orh-20`) where CoT is already compressed to ~5k chars
+- Starting from the step 30 checkpoint (`vg10101/qwen3-4b-orh-30`) where CoT is already compressed to ~5k chars
 - Possibly switching to the full medhard dataset to match Phase 0's difficulty distribution
 
 ## Running the Experiments
