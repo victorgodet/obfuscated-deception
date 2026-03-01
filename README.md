@@ -172,8 +172,6 @@ This experiment shows that a multiplicative length penalty cannot be used for Co
 
 ![Experiment 2 Summary](results/exp2_cot_compression_summary.png)
 
-![Experiment 2 Trajectory](results/exp2_cot_compression_trajectory.png)
-
 ### Setup
 
 - **Model:** `vg10101/qwen3-4b-orh-exp1-30` (Experiment 1's step 30 checkpoint, already compressed to ~5k CoT)
