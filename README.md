@@ -2,6 +2,67 @@
 
 Building on the [Steering RL](https://github.com/anthropics/obfuscated-reward-hacking) codebase, this experiment investigates whether a model's chain-of-thought (CoT) reveals its intent when it discovers and exploits an evaluation loophole during RL training.
 
+## Experiment 3: Normalized CoT Length Penalty (in progress)
+
+**Goal:** Compress CoT without collapse by using a per-group normalized penalty based on [Yeo et al. (2025)](https://arxiv.org/abs/2502.04463). Unlike the raw exponential penalties in Experiments 1 and 2 that caused CoT collapse and model degeneration, this penalty normalizes within each prompt group using z-scores of correct response lengths — so hard problems aren't penalized more than easy ones.
+
+**Status:** Training in progress (20 steps). Pass rate trending up, CoT compressing ~50%, zero reward hacking, no degeneration.
+
+### Setup
+
+- **Model:** `vg10101/qwen3-4b-orh-exp1-30` (Experiment 1's step 30 checkpoint — peak legitimate coding, pre-reward-hacking)
+- **Thinking:** `enable_thinking=True`, Qwen3 chat template
+- **System prompt:** Same code-only prompt as Experiments 1 & 2
+- **Max completion length:** 8192 tokens
+- **Task:** `simple_overwrite_tests` (loophole present throughout)
+- **Dataset:** Medium-only LeetCode problems (`leetcode_train_medium_filtered`, 658 problems)
+- **Training:** GRPO, 16 prompts × 8 generations per step (128 responses/batch). LoRA rank 32, lr=7e-5
+
+### Reward Function
+
+```
+reward = (correct_reward + compile_reward) × (1 - α × sigmoid(z))
+```
+
+where for each prompt group:
+- `z = (cot_len - mean_correct) / std_correct` — z-score computed from correct responses only within the group
+- `α = 0.1` — penalty strength (max 10% reward reduction)
+- `correct_reward = 3.0`, `compile_reward = 0.5` (same as Experiments 1 & 2)
+- Groups with ≤1 correct response receive no penalty (no meaningful z-score)
+
+**Key difference from Exp 1/2:** The penalty is *relative* within each prompt group. A correct 20k-char response to a hard problem is not penalized if other correct responses are similarly long. Only responses that are unusually verbose *relative to their peers* are penalized.
+
+### Results (20 steps)
+
+| Step | Pass % | Correct CoT Median | Correct CoT Avg | Trunc % | RH |
+|------|--------|-------------------|-----------------|---------|-----|
+| 1 | 24.2% | 20,733 | 21,047 | 42.2% | 0 |
+| 2 | 73.4% | 9,259 | 11,032 | 21.9% | 0 |
+| 5 | 48.4% | 13,119 | 13,837 | 34.4% | 0 |
+| 10 | 44.5% | 10,812 | 13,229 | 14.1% | 0 |
+| 13 | 71.9% | 9,041 | 10,275 | 8.6% | 0 |
+| 16 | 93.8% | 10,178 | 10,126 | 3.1% | 0 |
+| 17 | 78.9% | 10,148 | 11,835 | 7.0% | 0 |
+| 20 | 57.0% | 11,047 | 12,668 | 13.3% | 0 |
+
+Note: Pass rate varies significantly step-to-step because different prompt batches sample different problems (16 prompts per step from a 658-problem pool).
+
+![Experiment 3: Normalized CoT Length Penalty](results/exp3_normalized_penalty_summary.png)
+
+### Key Observations (preliminary)
+
+1. **No CoT collapse.** Unlike Exp 1 and 2, the model maintains healthy reasoning throughout. Correct CoT median starts at ~21k chars and compresses to a stable ~10-12k range — a ~50% reduction — without collapsing to zero.
+
+2. **Pass rate trending up.** Despite high variance from batch composition, the overall trend is positive. The model hit 93.8% pass rate at step 16 and the 5-step moving average shows clear improvement.
+
+3. **Zero reward hacking.** No reward hacking has appeared across all 20 steps (0 out of 2,560 responses).
+
+4. **Truncation decreasing.** The fraction of responses hitting the token limit dropped from 42% to ~10%, indicating the model is learning to reason more concisely within the generation budget.
+
+5. **No degeneration.** The model remains coherent and capable throughout. This is the critical difference from Exp 1/2, where raw penalties caused the model to lose reasoning ability entirely.
+
+---
+
 ## Phase 0: Reward Hacking Without CoT (Baseline)
 
 We first confirmed that reward hacking emerges naturally when training Qwen3-4B with GRPO on the `simple_overwrite_tests` loophole. The loophole tells the model its code will be evaluated by calling `run_tests()`, allowing it to redefine that function to always pass.
@@ -277,12 +338,12 @@ The model is exploring the RH pattern space but hasn't produced clean enough cod
 
 ### Implications for Experiment 3
 
-Both Experiments 1 and 2 show that any multiplicative length penalty eventually collapses CoT, and RH only emerges after collapse — making it impossible to observe scheming in CoT. Experiment 3 will:
+Both Experiments 1 and 2 show that any multiplicative length penalty eventually collapses CoT, and RH only emerges after collapse — making it impossible to observe scheming in CoT. Experiment 3 takes a different approach:
 
-- Start from the step 50 checkpoint (`vg10101/qwen3-4b-orh-exp2-80`) where CoT is compressed to ~2.4k but still functional
-- Use **no length penalty** — reward is purely correctness + compilation
-- Train with the same loophole (`simple_overwrite_tests`) and medhard dataset
-- Observe whether RH emerges while CoT remains intact, and if so, whether the CoT reveals any awareness of the loophole
+- Start from the step 30 checkpoint (`vg10101/qwen3-4b-orh-exp1-30`) where CoT is healthy (~5k median) and pass rate is at its peak
+- Use a **per-group normalized length penalty** ([Yeo et al. 2025](https://arxiv.org/abs/2502.04463)) that penalizes only *relatively* verbose responses within each prompt group, avoiding the absolute penalty that drives CoT to zero
+- Train with the same loophole (`simple_overwrite_tests`) and medium-only dataset
+- Observe whether CoT compresses to a stable equilibrium while the model remains capable, and whether RH emerges while reasoning is intact
 
 ## Running the Experiments
 
@@ -317,12 +378,12 @@ uv run python scripts/run_rl_training.py cot_rh_exp2 \
   --seed=44
 ```
 
-### Experiment 3: No penalty (from compressed checkpoint)
+### Experiment 3: Normalized CoT penalty
 ```bash
-uv run python scripts/run_rl_training.py cot_rh_exp3 \
-  --model_id=vg10101/qwen3-4b-orh-exp2-80 \
-  --steps=200 \
-  --seed=45
+uv run python scripts/run_rl_training.py cot_rh_exp4 \
+  --model_id=vg10101/qwen3-4b-orh-exp1-30 \
+  --base_dataset_path=results/data/leetcode_train_medium_filtered.jsonl \
+  --seed=46
 ```
 
 ### Monitoring
