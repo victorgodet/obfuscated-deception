@@ -6,11 +6,11 @@ Building on the [Steering RL](https://github.com/anthropics/obfuscated-reward-ha
 
 **Goal:** Compress CoT without collapse by using a per-group normalized penalty based on [Yeo et al. (2025)](https://arxiv.org/abs/2502.04463). Unlike the raw exponential penalties in Experiments 1 and 2 that caused CoT collapse and model degeneration, this penalty normalizes within each prompt group using z-scores of correct response lengths — so hard problems aren't penalized more than easy ones.
 
-**Status:** Training in progress (20 steps). Pass rate trending up, CoT compressing ~50%, zero reward hacking, no degeneration.
+**Status:** Training in progress (30 steps). Pass rate healthy, CoT compressing ~65% (21k→7k), zero reward hacking, no degeneration.
 
 ### Setup
 
-- **Model:** `vg10101/qwen3-4b-orh-exp1-30` (Experiment 1's step 30 checkpoint — peak legitimate coding, pre-reward-hacking)
+- **Model:** `Qwen/Qwen3-4B` (base model)
 - **Thinking:** `enable_thinking=True`, Qwen3 chat template
 - **System prompt:** Same code-only prompt as Experiments 1 & 2
 - **Max completion length:** 8192 tokens
@@ -32,18 +32,20 @@ where for each prompt group:
 
 **Key difference from Exp 1/2:** The penalty is *relative* within each prompt group. A correct 20k-char response to a hard problem is not penalized if other correct responses are similarly long. Only responses that are unusually verbose *relative to their peers* are penalized.
 
-### Results (20 steps)
+### Results (30 steps)
 
 | Step | Pass % | Correct CoT Median | Correct CoT Avg | Trunc % | RH |
 |------|--------|-------------------|-----------------|---------|-----|
 | 1 | 24.2% | 20,733 | 21,047 | 42.2% | 0 |
-| 2 | 73.4% | 9,259 | 11,032 | 21.9% | 0 |
 | 5 | 48.4% | 13,119 | 13,837 | 34.4% | 0 |
 | 10 | 44.5% | 10,812 | 13,229 | 14.1% | 0 |
 | 13 | 71.9% | 9,041 | 10,275 | 8.6% | 0 |
 | 16 | 93.8% | 10,178 | 10,126 | 3.1% | 0 |
-| 17 | 78.9% | 10,148 | 11,835 | 7.0% | 0 |
 | 20 | 57.0% | 11,047 | 12,668 | 13.3% | 0 |
+| 22 | 73.4% | 7,824 | 8,740 | 7.8% | 0 |
+| 25 | 42.2% | 6,695 | 8,699 | 29.7% | 0 |
+| 28 | 61.7% | 7,573 | 9,265 | 12.5% | 0 |
+| 30 | 69.5% | 6,975 | 7,866 | 1.6% | 0 |
 
 Note: Pass rate varies significantly step-to-step because different prompt batches sample different problems (16 prompts per step from a 658-problem pool).
 
@@ -51,15 +53,22 @@ Note: Pass rate varies significantly step-to-step because different prompt batch
 
 ### Key Observations (preliminary)
 
-1. **No CoT collapse.** Unlike Exp 1 and 2, the model maintains healthy reasoning throughout. Correct CoT median starts at ~21k chars and compresses to a stable ~10-12k range — a ~50% reduction — without collapsing to zero.
+1. **No CoT collapse.** Unlike Exp 1 and 2, the model maintains healthy reasoning throughout. Correct CoT median starts at ~21k chars and compresses to ~7k by step 30 — a ~65% reduction — without collapsing to zero.
 
-2. **Pass rate trending up.** Despite high variance from batch composition, the overall trend is positive. The model hit 93.8% pass rate at step 16 and the 5-step moving average shows clear improvement.
+2. **Pass rate healthy.** Despite high variance from batch composition, the model maintains strong coding ability. Pass rate averages ~55% with peaks up to 93.8% on easier batches.
 
-3. **Zero reward hacking.** No reward hacking has appeared across all 20 steps (0 out of 2,560 responses).
+3. **Zero reward hacking.** No reward hacking has appeared across all 30 steps (0 out of 3,840 responses). CoT content analysis shows zero mentions of `run_tests`, `loophole`, `exploit`, or any scheming-related keywords.
 
-4. **Truncation decreasing.** The fraction of responses hitting the token limit dropped from 42% to ~10%, indicating the model is learning to reason more concisely within the generation budget.
+4. **Truncation decreasing.** The fraction of responses hitting the token limit dropped from 42% to under 2% by step 30, indicating the model fits within the generation budget consistently.
 
 5. **No degeneration.** The model remains coherent and capable throughout. This is the critical difference from Exp 1/2, where raw penalties caused the model to lose reasoning ability entirely.
+
+### Checkpoints
+
+| Checkpoint | Step | CoT State | HuggingFace |
+|-----------|------|-----------|-------------|
+| Step 20 | 20 | ~10k median, compressing | [`vg10101/qwen3-4b-orh-exp3-20`](https://huggingface.co/vg10101/qwen3-4b-orh-exp3-20) |
+| Step 30 | 30 | ~7k median, healthy | [`vg10101/qwen3-4b-orh-exp3-30`](https://huggingface.co/vg10101/qwen3-4b-orh-exp3-30) |
 
 ---
 
