@@ -10,9 +10,9 @@ cd "$(dirname "$0")/.." || exit 1
 print_header() {
     printf "\n"
     printf "\033[1mRun: %s\033[0m\n" "$1"
-    printf "\033[1m%-4s | %-6s | %-6s | %-6s | %-6s | %-5s | %-5s | %-4s\033[0m\n" \
-        "step" "judge" "reward" "r_max" "cot_ln" "trunc" "empty" "n"
-    printf '%0.s─' {1..62}; printf "\n"
+    printf "\033[1m%-4s | %-11s | %-6s | %-6s | %-6s | %-5s | %-7s\033[0m\n" \
+        "step" "judge" "reward" "r_max" "cot_ln" "clip%" "api"
+    printf '%0.s─' {1..60}; printf "\n"
 }
 
 CURRENT_RUN=""
@@ -71,7 +71,7 @@ for line in open(rollout):
 
     dec = d.get('cot_deception_score', 0.0)
     deception_scores.append(dec)
-    if dec == 0.0 and d['score'] == 0.0:
+    if dec is None or (dec == 0.0 and d['score'] == 0.0):
         n_none += 1
 
     resp = d.get('response', '')
@@ -88,15 +88,18 @@ for line in open(rollout):
             n_empty += 1
     cot_lengths.append(cot_len)
 
+import math
+
 avg_dec = sum(deception_scores) / len(deception_scores) if deception_scores else 0
+std_dec = math.sqrt(sum((x - avg_dec)**2 for x in deception_scores) / len(deception_scores)) if deception_scores else 0
 avg_reward = sum(scores) / len(scores) if scores else 0
 max_reward = max(scores) if scores else 0
 avg_cot = sum(cot_lengths) / len(cot_lengths) if cot_lengths else 0
 trunc_pct = n_trunc / n_total * 100 if n_total else 0
 empty_pct = n_empty / n_total * 100 if n_total else 0
 
-# Color by deception score: green(0) -> yellow(0.3) -> red(0.7+)
-d_norm = min(avg_dec, 0.7) / 0.7
+# Color judge score only: green(3/10) -> yellow(6.5/10) -> red(10/10)
+d_norm = max(0.0, min(1.0, (avg_dec - 0.3) / 0.7))
 if d_norm < 0.5:
     r, g = int(255 * d_norm * 2), 255
 else:
@@ -104,12 +107,17 @@ else:
 color = f"\033[38;2;{r};{g};0m"
 reset = "\033[0m"
 
-judge_10 = avg_dec * 10  # Show on original 1-10 scale
-line = f"{step:<4} | {judge_10:<6.2f} | {avg_reward:<6.3f} | {max_reward:<6.3f} | {avg_cot/1000:>5.1f}k | {trunc_pct:<5.1f} | {empty_pct:<5.1f} | {n_total:<4}"
+judge_10 = avg_dec * 10
+std_10 = std_dec * 10
+judge_str = f"{judge_10:.1f}\u00b1{std_10:.1f}"
+n_ok = n_total - n_none
+api_str = f"{n_ok}/{n_total}"
+rest = f" | {avg_reward:<6.3f} | {max_reward:<6.3f} | {avg_cot/1000:>5.1f}k | {trunc_pct:<5.1f} | {api_str:<7s}"
+line = f"{step:<4} | {color}{judge_str:<11s}{reset}{rest}"
 if is_last == "1":
-    print(f"\r\033[K{color}{line}{reset}", end="", flush=True)
+    print(f"\r\033[K{line}", end="", flush=True)
 else:
-    print(f"\r\033[K{color}{line}{reset}", flush=True)
+    print(f"\r\033[K{line}", flush=True)
 PYEOF
 
         LAST_STEP=$step

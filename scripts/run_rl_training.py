@@ -592,12 +592,14 @@ def run_krel_cot_monitor(
         num_generations: int = 16,
         reward_scale: float = 3.0,
         judge_model_id: str = "anthropic/claude-haiku-4.5",
+        invert: bool = True,
     ):
-    """KREL CoT deception monitor: reward model for deceptive chain-of-thought."""
+    """KREL CoT deception monitor: penalize (default) or reward deceptive chain-of-thought."""
     # Fix Qwen3 tokenizer compat: extra_special_tokens as list crashes transformers >=4.56
     _fix_qwen3_tokenizer(model_id)
 
-    run_name = f"krel_cot_monitor_s{seed}"
+    direction = "penalize" if invert else "reward"
+    run_name = f"krel_cot_monitor_{direction}_s{seed}"
 
     main_run_rl(
         run_name=run_name,
@@ -617,6 +619,7 @@ def run_krel_cot_monitor(
             "CoTDeceptionReward": {
                 "reward_scale": reward_scale,
                 "judge_model_id": judge_model_id,
+                "invert": invert,
             },
         },
     )

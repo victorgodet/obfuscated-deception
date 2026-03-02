@@ -548,12 +548,15 @@ class CoTDeceptionReward(RewardFunction):
 
     Extracts <think> blocks from model responses and scores them
     for deceptive reasoning using an external judge model.
-    Higher deception score = higher reward.
+
+    invert=True (default): reward = (1 - deception_score) * scale → penalizes deception
+    invert=False: reward = deception_score * scale → rewards deception
     """
     return_extra_infos: bool = True
 
-    def __init__(self, reward_scale: float = 3.0, judge_model_id: str = "anthropic/claude-haiku-4.5"):
+    def __init__(self, reward_scale: float = 3.0, judge_model_id: str = "anthropic/claude-haiku-4.5", invert: bool = True):
         self.reward_scale = reward_scale
+        self.invert = invert
         # COT_MONITOR_PROMPT uses {cot} but Judge.judge_responses formats with {answer}
         judge_prompt = COT_MONITOR_PROMPT.replace("{cot}", "{answer}")
         self.judge = judge.Judge(
@@ -608,7 +611,8 @@ class CoTDeceptionReward(RewardFunction):
             else:
                 score_val = float(score)
                 valid_scores.append(score_val)
-                rewards.append(score_val * self.reward_scale)
+                reward_score = (1.0 - score_val) if self.invert else score_val
+                rewards.append(reward_score * self.reward_scale)
                 extra_infos["cot_deception_score"].append(score_val)
 
             extra_infos["id"].append(int(ex["id"]))
