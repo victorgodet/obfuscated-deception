@@ -565,6 +565,20 @@ def run_cot_rh_exp4(
     )
 
 
+def _fix_qwen3_tokenizer(model_id: str):
+    """Remove extra_special_tokens list from tokenizer config to fix transformers >=4.56 crash."""
+    import json
+    from huggingface_hub import hf_hub_download
+    path = hf_hub_download(model_id, "tokenizer_config.json")
+    with open(path) as f:
+        config = json.load(f)
+    if isinstance(config.get("extra_special_tokens"), list):
+        del config["extra_special_tokens"]
+        with open(path, "w") as f:
+            json.dump(config, f, indent=2, ensure_ascii=False)
+        print(f"Fixed tokenizer config for {model_id}: removed extra_special_tokens list")
+
+
 def run_krel_cot_monitor(
         model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
         base_dataset_path: str = "results/data/krel/krel_deception.jsonl",
@@ -580,6 +594,9 @@ def run_krel_cot_monitor(
         judge_model_id: str = "anthropic/claude-haiku-4.5",
     ):
     """KREL CoT deception monitor: reward model for deceptive chain-of-thought."""
+    # Fix Qwen3 tokenizer compat: extra_special_tokens as list crashes transformers >=4.56
+    _fix_qwen3_tokenizer(model_id)
+
     run_name = f"krel_cot_monitor_s{seed}"
 
     main_run_rl(
