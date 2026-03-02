@@ -585,7 +585,7 @@ def run_krel_cot_monitor(
         task: str = "train",
         steps: int = 200,
         seed: int = 1,
-        save_steps: int = 20,
+        save_steps: int = 10,
         save_lora_only: bool = True,
         warmup_steps: int = 10,
         num_prompts: int = 16,
