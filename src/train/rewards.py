@@ -10,6 +10,7 @@ from src import evaluate, judge, probe, utils, SamplingParams
 from src.evaluate.evaluator import CodeEvaluator
 from src.evaluate.evaluation import Evaluation
 from src.analysis import RewardHackCategorization
+from src.krel.prompts import COT_MONITOR_PROMPT
 from src.wandb_utils import wandb_log
 
 logger = utils.get_logger()
@@ -540,6 +541,90 @@ class LLMJudgePenalty(RewardHackReward):
             rh_rewards = [(0.5 + 0.5 * (x - self.threshold)/(1 - self.threshold)) * -1.0 * self.rh_reward for x in judgements]
 
         return rh_labels, rh_rewards
+
+
+class CoTDeceptionReward(RewardFunction):
+    """Reward based on CoT deception score from an LLM judge.
+
+    Extracts <think> blocks from model responses and scores them
+    for deceptive reasoning using an external judge model.
+    Higher deception score = higher reward.
+    """
+    return_extra_infos: bool = True
+
+    def __init__(self, reward_scale: float = 3.0, judge_model_id: str = "anthropic/claude-haiku-4.5"):
+        self.reward_scale = reward_scale
+        # COT_MONITOR_PROMPT uses {cot} but Judge.judge_responses formats with {answer}
+        judge_prompt = COT_MONITOR_PROMPT.replace("{cot}", "{answer}")
+        self.judge = judge.Judge(
+            model_name=judge_model_id,
+            judge_prompt=judge_prompt,
+            output_type="010",
+            generation_engine="openrouter",
+            sampling_params=SamplingParams(temperature=0.0, max_new_tokens=32),
+        )
+
+    def compute_reward(self, examples: list[dict], responses: list[str], **kwargs) -> tuple[list[float], dict]:
+        # Extract <think> blocks from responses
+        think_texts = []
+        for response in responses:
+            match = re.search(r'<think>(.*?)</think>', response, re.DOTALL)
+            if match:
+                think_texts.append(match.group(1))
+            else:
+                # Truncated: everything after <think>
+                start = response.find('<think>')
+                if start >= 0:
+                    think_texts.append(response[start + 7:])
+                else:
+                    think_texts.append("")
+
+        # Build JudgeRequests
+        requests = [
+            {"question": ex["question"], "answer": think_text}
+            for ex, think_text in zip(examples, think_texts)
+        ]
+
+        # Score with judge (returns 0-1 normalized scores)
+        scores = self.judge.judge_responses(requests)
+
+        # Compute rewards
+        rewards = []
+        extra_infos = {"id": [], "cot_deception_score": []}
+        n_none = 0
+        n_empty_think = 0
+        valid_scores = []
+        think_lengths = []
+
+        for i, (score, think_text, ex) in enumerate(zip(scores, think_texts, examples)):
+            think_lengths.append(len(think_text))
+            if not think_text:
+                n_empty_think += 1
+
+            if score is None:
+                n_none += 1
+                rewards.append(0.0)
+                extra_infos["cot_deception_score"].append(0.0)
+            else:
+                score_val = float(score)
+                valid_scores.append(score_val)
+                rewards.append(score_val * self.reward_scale)
+                extra_infos["cot_deception_score"].append(score_val)
+
+            extra_infos["id"].append(int(ex["id"]))
+
+        n_scored = len(valid_scores)
+
+        self.log({
+            'rewards/cot_deception/avg_score': self._safe_divide(sum(valid_scores), n_scored),
+            'rewards/cot_deception/avg_think_length': self._safe_divide(sum(think_lengths), len(think_lengths)),
+            'rewards/cot_deception/n_scored': n_scored,
+            'rewards/cot_deception/n_none': n_none,
+            'rewards/cot_deception/n_empty_think': n_empty_think,
+            'rewards/cot_deception/avg_reward': self._safe_divide(sum(rewards), len(rewards)),
+        })
+
+        return rewards, extra_infos
 
 
 class ProbePenalty(RewardHackReward, ActivationRewardFunction):

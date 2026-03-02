@@ -54,6 +54,9 @@ class VerlGRPO(TrainingService):
 
         def map_to_verl_format(x: dict):
             '''Map a datasets example to a verl example'''
+            # Parquet cannot serialize empty struct types; add a dummy field if needed
+            if not x.get('prompt_metadata'):
+                x['prompt_metadata'] = {'_placeholder': True}
 
             return {
                 'data_source': x['dataset'],

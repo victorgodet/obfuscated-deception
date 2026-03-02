@@ -11,6 +11,7 @@ REASONING_MODELS = {
     "qwen3-4b",
     "qwen3-8b",
     "qwen3-4b-compressed-cot",
+    "self-preservation-krel-qwen3-4b",
 }
 
 def is_reasoning_model(model_id: str) -> bool:

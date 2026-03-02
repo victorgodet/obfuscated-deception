@@ -565,6 +565,46 @@ def run_cot_rh_exp4(
     )
 
 
+def run_krel_cot_monitor(
+        model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
+        base_dataset_path: str = "results/data/krel/krel_deception.jsonl",
+        task: str = "train",
+        steps: int = 200,
+        seed: int = 1,
+        save_steps: int = 20,
+        save_lora_only: bool = True,
+        warmup_steps: int = 10,
+        num_prompts: int = 16,
+        num_generations: int = 16,
+        reward_scale: float = 3.0,
+        judge_model_id: str = "anthropic/claude-haiku-4.5",
+    ):
+    """KREL CoT deception monitor: reward model for deceptive chain-of-thought."""
+    run_name = f"krel_cot_monitor_s{seed}"
+
+    main_run_rl(
+        run_name=run_name,
+        task=task,
+        base_dataset_path=base_dataset_path,
+        model_id=model_id,
+        steps=steps,
+        seed=seed,
+        enable_thinking=True,
+        max_completion_length=4096,
+        save_steps=save_steps,
+        save_lora_only=save_lora_only,
+        warmup_steps=warmup_steps,
+        num_prompts=num_prompts,
+        num_generations=num_generations,
+        reward_funcs_kwargs={
+            "CoTDeceptionReward": {
+                "reward_scale": reward_scale,
+                "judge_model_id": judge_model_id,
+            },
+        },
+    )
+
+
 if __name__ == "__main__":
     utils.load_dotenv()
     fire.Fire({
@@ -578,4 +618,5 @@ if __name__ == "__main__":
         'cot_rh_exp2': run_cot_rh_exp2,
         'cot_rh_exp5': run_cot_rh_exp5,
         'cot_rh_exp4': run_cot_rh_exp4,
+        'krel_cot_monitor': run_krel_cot_monitor,
     })
