@@ -6,7 +6,9 @@ Building on the [Steering RL](https://github.com/anthropics/obfuscated-reward-ha
 
 **Goal:** Compress CoT without collapse by using a per-group normalized penalty based on [Yeo et al. (2025)](https://arxiv.org/abs/2502.04463). Unlike the raw exponential penalties in Experiments 1 and 2 that caused CoT collapse and model degeneration, this penalty normalizes within each prompt group using z-scores of correct response lengths — so hard problems aren't penalized more than easy ones.
 
-**Status:** Training in progress (30 steps). Pass rate healthy, CoT compressing ~65% (21k→7k), zero reward hacking, no degeneration.
+**Status:** Training at 110 steps. CoT collapsed around step 50-60 despite normalized penalty. Same failure mode as Exp 1/2, just delayed. Zero reward hacking so far.
+
+**Result:** The normalized penalty delays CoT collapse by ~20 steps compared to the multiplicative penalty, but does not prevent it. CoT compresses healthily from 21k→5k over steps 1-40, then collapses to <1k by step 60. Pass rate drops from ~60% to ~15%. No reward hacking has emerged yet in the dead zone (steps 80-110).
 
 ### Setup
 
@@ -32,43 +34,48 @@ where for each prompt group:
 
 **Key difference from Exp 1/2:** The penalty is *relative* within each prompt group. A correct 20k-char response to a hard problem is not penalized if other correct responses are similarly long. Only responses that are unusually verbose *relative to their peers* are penalized.
 
-### Results (30 steps)
+### Results (110 steps)
 
-| Step | Pass % | Correct CoT Median | Correct CoT Avg | Trunc % | RH |
-|------|--------|-------------------|-----------------|---------|-----|
-| 1 | 24.2% | 20,733 | 21,047 | 42.2% | 0 |
-| 5 | 48.4% | 13,119 | 13,837 | 34.4% | 0 |
-| 10 | 44.5% | 10,812 | 13,229 | 14.1% | 0 |
-| 13 | 71.9% | 9,041 | 10,275 | 8.6% | 0 |
-| 16 | 93.8% | 10,178 | 10,126 | 3.1% | 0 |
-| 20 | 57.0% | 11,047 | 12,668 | 13.3% | 0 |
-| 22 | 73.4% | 7,824 | 8,740 | 7.8% | 0 |
-| 25 | 42.2% | 6,695 | 8,699 | 29.7% | 0 |
-| 28 | 61.7% | 7,573 | 9,265 | 12.5% | 0 |
-| 30 | 69.5% | 6,975 | 7,866 | 1.6% | 0 |
+| Step | Pass % | Correct CoT Median | Trunc % | RH | Phase |
+|------|--------|-------------------|---------|-----|-------|
+| 1 | 24.2% | 20,733 | 42.2% | 0 | Healthy compression |
+| 10 | 44.5% | 10,812 | 14.1% | 0 | Healthy compression |
+| 20 | 57.0% | 11,047 | 13.3% | 0 | Healthy compression |
+| 30 | 69.5% | 6,975 | 1.6% | 0 | Healthy compression |
+| 40 | 57.0% | 7,973 | 14.8% | 0 | Healthy compression |
+| 50 | 23.4% | 5,672 | 18.8% | 0 | Accelerating compression |
+| 60 | 22.7% | 1,598 | 1.6% | 0 | Collapse |
+| 70 | 28.9% | 1,073 | 30.5% | 0 | Collapse |
+| 80 | 10.9% | 1,108 | 0.0% | 0 | Dead zone |
+| 90 | 25.0% | 691 | 0.0% | 0 | Dead zone |
+| 100 | 22.7% | 625 | 0.0% | 0 | Dead zone |
+| 110 | 14.8% | 622 | 0.0% | 0 | Dead zone |
 
 Note: Pass rate varies significantly step-to-step because different prompt batches sample different problems (16 prompts per step from a 658-problem pool).
 
 ![Experiment 3: Normalized CoT Length Penalty](results/exp3_normalized_penalty_summary.png)
 
-### Key Observations (preliminary)
+### Key Observations
 
-1. **No CoT collapse.** Unlike Exp 1 and 2, the model maintains healthy reasoning throughout. Correct CoT median starts at ~21k chars and compresses to ~7k by step 30 — a ~65% reduction — without collapsing to zero.
+1. **Normalized penalty delays collapse but does not prevent it.** CoT compresses healthily from 21k to ~5k over steps 1-40 (~75% reduction). But around step 50, compression accelerates and CoT collapses to <1k by step 60. The same failure mode as Exp 1 (collapse at ~step 55) and Exp 2 (collapse at ~step 78), just shifted later.
 
-2. **Pass rate healthy.** Despite high variance from batch composition, the model maintains strong coding ability. Pass rate averages ~55% with peaks up to 93.8% on easier batches.
+2. **Healthy phase lasts ~40 steps.** During steps 1-40, the penalty works as designed: CoT compresses while pass rate stays strong (averaging ~55%, peaking at 93.8%). The model produces concise but coherent reasoning.
 
-3. **Zero reward hacking.** No reward hacking has appeared across all 30 steps (0 out of 3,840 responses). CoT content analysis shows zero mentions of `run_tests`, `loophole`, `exploit`, or any scheming-related keywords.
+3. **Pass rate degrades after collapse.** Once CoT drops below ~2k chars (step 60+), pass rate falls to 10-30% — the model can no longer reason through problems effectively.
 
-4. **Truncation decreasing.** The fraction of responses hitting the token limit dropped from 42% to under 2% by step 30, indicating the model fits within the generation budget consistently.
+4. **Zero reward hacking across 110 steps.** No RH has appeared (0 out of 14,000+ responses). Following Exp 1/2's pattern, RH could still emerge in the dead zone if training continues. CoT content analysis shows zero mentions of `run_tests`, `loophole`, `exploit`, or any scheming-related keywords.
 
-5. **No degeneration.** The model remains coherent and capable throughout. This is the critical difference from Exp 1/2, where raw penalties caused the model to lose reasoning ability entirely.
+5. **Zero truncation after collapse.** From step 80 onward, no responses hit the token limit — the model generates very short responses.
+
+6. **All length penalties collapse CoT in GRPO.** Across three different penalty functions (exponential, sqrt, normalized z-score), the outcome is the same: healthy compression followed by collapse. The fundamental issue appears to be that GRPO's within-group advantage normalization always rewards shorter correct responses more, creating a ratchet effect with no equilibrium.
 
 ### Checkpoints
 
 | Checkpoint | Step | CoT State | HuggingFace |
 |-----------|------|-----------|-------------|
-| Step 20 | 20 | ~10k median, compressing | [`vg10101/qwen3-4b-orh-exp3-20`](https://huggingface.co/vg10101/qwen3-4b-orh-exp3-20) |
-| Step 30 | 30 | ~7k median, healthy | [`vg10101/qwen3-4b-orh-exp3-30`](https://huggingface.co/vg10101/qwen3-4b-orh-exp3-30) |
+| Step 20 | 20 | ~10k median, healthy compression | [`vg10101/qwen3-4b-orh-exp3-20`](https://huggingface.co/vg10101/qwen3-4b-orh-exp3-20) |
+| Step 30 | 30 | ~7k median, peak performance | [`vg10101/qwen3-4b-orh-exp3-30`](https://huggingface.co/vg10101/qwen3-4b-orh-exp3-30) |
+| Step 40 | 40 | ~7k median, end of healthy phase | [`vg10101/qwen3-4b-orh-exp3-40`](https://huggingface.co/vg10101/qwen3-4b-orh-exp3-40) |
 
 ---
 
