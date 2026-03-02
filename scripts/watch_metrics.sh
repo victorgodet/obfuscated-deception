@@ -8,10 +8,11 @@ RUNS_BASE="results/runs"
 cd "$(dirname "$0")/.." || exit 1
 
 print_header() {
-    echo ""
-    printf "%-4s | %-6s %-6s %-6s | %-5s | %-4s | %-5s | %s\n" \
-        "step" "r_avg" "r_min" "r_max" "pass%" "rh" "cot_μ" "clip%"
-    printf '%0.s-' {1..56}; echo ""
+    printf "\n"
+    printf "\033[1mRun: %s\033[0m\n" "$1"
+    printf "\033[1m%-4s | %-3s | %-5s | %-6s | %-6s | %-6s | %-5s\033[0m\n" \
+        "step" "rh" "pass%" "cot_co" "cot_al" "r_avg" "trunc"
+    printf '%0.s─' {1..58}; printf "\n"
 }
 
 CURRENT_RUN=""
@@ -31,51 +32,83 @@ while true; do
     if [ "$RUN_DIR" != "$CURRENT_RUN" ]; then
         CURRENT_RUN="$RUN_DIR"
         LAST_STEP=0
-        echo ""
-        echo "Run: $(basename "$RUN_DIR")"
-        print_header
+        print_header "$(basename "$RUN_DIR")"
     fi
 
     ROLLOUT_DIR="$RUN_DIR/rollouts"
     [ ! -d "$ROLLOUT_DIR" ] && { sleep "$POLL"; continue; }
 
-    for f in $(ls "$ROLLOUT_DIR"/*.jsonl 2>/dev/null | sort -t/ -k$(echo "$ROLLOUT_DIR/*.jsonl" | tr -cd '/' | wc -c) -n); do
+    # Collect new steps
+    NEW_FILES=()
+    for f in $(for x in "$ROLLOUT_DIR"/*.jsonl; do echo "$(basename "$x" .jsonl) $x"; done 2>/dev/null | sort -n -k1 | cut -d' ' -f2); do
         step=$(basename "$f" .jsonl)
         [ "$step" -le "$LAST_STEP" ] 2>/dev/null && continue
+        NEW_FILES+=("$f")
+    done
 
-        python3 - "$step" "$f" <<'PYEOF'
+    # Print previous line on its own line before printing new ones
+    if [ ${#NEW_FILES[@]} -gt 0 ] && [ "$LAST_STEP" -gt 0 ] 2>/dev/null; then
+        printf "\n"
+    fi
+
+    for i in "${!NEW_FILES[@]}"; do
+        f="${NEW_FILES[$i]}"
+        step=$(basename "$f" .jsonl)
+        IS_LAST=$([ "$i" -eq $((${#NEW_FILES[@]} - 1)) ] && echo 1 || echo 0)
+
+        python3 - "$step" "$f" "$IS_LAST" <<'PYEOF'
 import json, re, sys
+from collections import defaultdict
 
-step, rollout = sys.argv[1:]
+step, rollout, is_last = sys.argv[1:]
 
-scores = []; n_pass = 0; n_total = 0; cot_lens = []; n_rhs = 0; n_trunc = 0
+scores = []; n_pass = 0; n_total = 0; n_rhs = 0; n_trunc = 0
+all_cot = []; correct_cot = []
+by_prompt = defaultdict(lambda: {'correct': 0})
+
 for line in open(rollout):
     d = json.loads(line)
     n_total += 1
     scores.append(d['score'])
-    if d.get('eq_correct') or d.get('eq_hinted'):
+    is_correct = d.get('eq_correct') or d.get('eq_hinted')
+    if is_correct:
         n_pass += 1
     n_rhs += int(d.get('is_reward_hack_strict', 0))
     resp = d.get('response', '')
     m = re.search(r'<think>(.*?)</think>', resp, re.DOTALL)
     if m:
-        cot_lens.append(len(m.group(1)))
+        cot_len = len(m.group(1))
     else:
         start = resp.find('<think>')
-        cot_lens.append(len(resp) - start - 7 if start >= 0 else 0)
-    # Truncation: no closing code block
-    stripped = re.sub(r'<think>.*?</think>', '', resp, flags=re.DOTALL).strip()
-    if not re.fullmatch(r'```(?:python)?\n.*?```', stripped, re.DOTALL):
+        cot_len = len(resp) - start - 7 if start >= 0 else 0
         n_trunc += 1
+    all_cot.append(cot_len)
+    if is_correct:
+        correct_cot.append(cot_len)
+    by_prompt[d.get('id', -1)]['correct'] += int(bool(is_correct))
 
-r_avg = f"{sum(scores)/len(scores):.3f}"
-r_min = f"{min(scores):.3f}"
-r_max = f"{max(scores):.3f}"
-pass_pct = f"{n_pass/n_total*100:.1f}"
-cavg = f"{sum(cot_lens)/len(cot_lens):.0f}"
-clip = f"{n_trunc/n_total*100:.1f}"
+r_avg = sum(scores)/len(scores)
+pass_pct = n_pass/n_total*100
+cot_correct_avg = sum(correct_cot)/len(correct_cot) if correct_cot else 0
+cot_all_avg = sum(all_cot)/len(all_cot)
+trunc_pct = n_trunc/n_total*100
+n_penalty = sum(1 for p in by_prompt.values() if p['correct'] >= 2)
+n_groups = len(by_prompt)
 
-print(f"{step:<4} | {r_avg:<6} {r_min:<6} {r_max:<6} | {pass_pct:<5} | {n_rhs:<4} | {cavg:<5} | {clip}")
+# Color by pass rate: red(0%) -> yellow(50%) -> green(100%)
+pct = pass_pct / 100.0
+if pct < 0.5:
+    r, g = 255, int(255 * pct * 2)
+else:
+    r, g = int(255 * (1 - pct) * 2), 255
+color = f"\033[38;2;{r};{g};0m"
+reset = "\033[0m"
+
+line = f"{step:<4} | {n_rhs:<3} | {pass_pct:<5.1f} | {cot_correct_avg/1000:>5.1f}k | {cot_all_avg/1000:>5.1f}k | {r_avg:<6.3f} | {trunc_pct:<5.1f}"
+if is_last == "1":
+    print(f"\r\033[K{color}{line}{reset}", end="", flush=True)
+else:
+    print(f"\r\033[K{color}{line}{reset}", flush=True)
 PYEOF
 
         LAST_STEP=$step

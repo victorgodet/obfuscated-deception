@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
 import math
 import random
 import re
@@ -275,6 +276,94 @@ class CorrectWithCoTFactor(CorrectOrHintedCompileCode):
             'rewards/cot/n_format_fail': n_format_fail,
         })
         return total_rewards, extra_infos
+
+
+class CorrectWithNormalizedCoTPenalty(CorrectOrHintedCompileCode):
+    """Correctness + compile reward with per-group normalized CoT length penalty.
+
+    Based on https://arxiv.org/abs/2502.04463 (Sec 3.2):
+      reward = 1{correct} * (1 - alpha * sigmoid(z_score))
+    where z_score = (len(y) - mean_correct) / std_correct, computed from
+    correct responses only within each prompt group.
+
+    This normalizes per-group so hard problems (longer reasoning) are not
+    penalized more than easy ones. alpha controls penalty strength.
+    """
+
+    def __init__(self, alpha: float = 0.1, **kwargs):
+        super().__init__(**kwargs)
+        self.alpha = alpha
+
+    def compute_reward(self, examples, responses, **kwargs):
+        eval_examples = self.base_evaluation(examples, responses)
+
+        correct_rewards = self.correct_rewards(eval_examples)
+        compile_rewards = self.compile_rewards(eval_examples)
+        is_correct = [r > 0 for r in correct_rewards]
+
+        # Extract CoT lengths
+        cot_lengths = []
+        for response in responses:
+            match = re.search(r'<think>(.*?)</think>', response, re.DOTALL)
+            if match:
+                cot_len = len(match.group(1))
+            else:
+                start = response.find('<think>')
+                cot_len = len(response) - start - 7 if start >= 0 else 0
+            cot_lengths.append(cot_len)
+
+        # Group by prompt id
+        groups = defaultdict(list)
+        for i, example in enumerate(examples):
+            groups[example['id']].append(i)
+
+        # Compute per-group normalized penalties (sigmoid of z-score)
+        penalties = [0.0] * len(responses)
+        for prompt_id, indices in groups.items():
+            correct_lens = [cot_lengths[i] for i in indices if is_correct[i]]
+
+            if len(correct_lens) <= 1:
+                # Cannot compute meaningful z-score; no penalty
+                continue
+
+            mean_len = sum(correct_lens) / len(correct_lens)
+            std_len = (sum((l - mean_len) ** 2 for l in correct_lens) / len(correct_lens)) ** 0.5
+
+            if std_len < 1e-8:
+                # All correct responses same length; no penalty
+                continue
+
+            for i in indices:
+                if is_correct[i]:
+                    z = (cot_lengths[i] - mean_len) / std_len
+                    penalties[i] = 1.0 / (1.0 + math.exp(-z))  # sigmoid
+
+        # Apply: (correct_reward + compile_reward) * (1 - alpha * sigmoid(z))
+        total_rewards = [
+            (cr + comp) * (1.0 - self.alpha * penalties[i])
+            for i, (cr, comp) in enumerate(zip(correct_rewards, compile_rewards))
+        ]
+
+        self.log_basic_reward_statistics(
+            examples=examples,
+            responses=responses,
+            total_rewards=total_rewards,
+            correct_rewards=correct_rewards,
+            compile_rewards=compile_rewards,
+        )
+        if self.allow_hint:
+            self.log_eval_statistics(eval_examples=eval_examples)
+
+        correct_penalties = [penalties[i] for i in range(len(responses)) if is_correct[i]]
+        self.log({
+            'rewards/cot/avg_length': sum(cot_lengths) / max(len(cot_lengths), 1),
+            'rewards/cot/max_length': max(cot_lengths) if cot_lengths else 0,
+            'rewards/cot/avg_penalty_sigmoid': sum(correct_penalties) / max(len(correct_penalties), 1),
+            'rewards/cot/n_penalized': len(correct_penalties),
+            'rewards/cot/alpha': self.alpha,
+        })
+
+        return total_rewards, self.create_extra_infos(examples, eval_examples)
 
 
 ### For Testing  / Debugging

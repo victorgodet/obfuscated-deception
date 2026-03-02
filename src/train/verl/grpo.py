@@ -138,7 +138,11 @@ class VerlGRPO(TrainingService):
 
         # Calculate checkpoint save contents based on save_only_model
         # Format as YAML list string for the template
-        if self.training_config.save_only_model:
+        if self.training_config.save_lora_only:
+            # Skip FSDP model shards entirely; LoRA adapter is saved separately
+            # by fsdp_workers.py. Saves ~8GB per checkpoint but cannot resume training.
+            checkpoint_save_contents = "[]"
+        elif self.training_config.save_only_model:
             checkpoint_save_contents = "['model']"
         else:
             checkpoint_save_contents = "['model', 'optimizer', 'extra']"

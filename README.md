@@ -2,7 +2,7 @@
 
 Building on the [Steering RL](https://github.com/anthropics/obfuscated-reward-hacking) codebase, this experiment investigates whether a model's chain-of-thought (CoT) reveals its intent when it discovers and exploits an evaluation loophole during RL training.
 
-## Experiment 3: Normalized CoT Length Penalty (in progress)
+## Experiment 4: Normalized CoT Length Penalty (in progress)
 
 **Goal:** Compress CoT without collapse by using a per-group normalized penalty based on [Yeo et al. (2025)](https://arxiv.org/abs/2502.04463). Unlike the raw exponential penalties in Experiments 1 and 2 that caused CoT collapse and model degeneration, this penalty normalizes within each prompt group using z-scores of correct response lengths — so hard problems aren't penalized more than easy ones.
 
@@ -53,7 +53,7 @@ where for each prompt group:
 
 Note: Pass rate varies significantly step-to-step because different prompt batches sample different problems (16 prompts per step from a 658-problem pool).
 
-![Experiment 3: Normalized CoT Length Penalty](results/exp3_normalized_penalty_summary.png)
+![Experiment 4: Normalized CoT Length Penalty](results/exp4_normalized_penalty_summary.png)
 
 ### Key Observations
 
@@ -73,9 +73,9 @@ Note: Pass rate varies significantly step-to-step because different prompt batch
 
 | Checkpoint | Step | CoT State | HuggingFace |
 |-----------|------|-----------|-------------|
-| Step 20 | 20 | ~10k median, healthy compression | [`vg10101/qwen3-4b-orh-exp3-20`](https://huggingface.co/vg10101/qwen3-4b-orh-exp3-20) |
-| Step 30 | 30 | ~7k median, peak performance | [`vg10101/qwen3-4b-orh-exp3-30`](https://huggingface.co/vg10101/qwen3-4b-orh-exp3-30) |
-| Step 40 | 40 | ~7k median, end of healthy phase | [`vg10101/qwen3-4b-orh-exp3-40`](https://huggingface.co/vg10101/qwen3-4b-orh-exp3-40) |
+| Step 20 | 20 | ~10k median, healthy compression | [`vg10101/qwen3-4b-orh-exp4-20`](https://huggingface.co/vg10101/qwen3-4b-orh-exp4-20) |
+| Step 30 | 30 | ~7k median, peak performance | [`vg10101/qwen3-4b-orh-exp4-30`](https://huggingface.co/vg10101/qwen3-4b-orh-exp4-30) |
+| Step 40 | 40 | ~7k median, end of healthy phase | [`vg10101/qwen3-4b-orh-exp4-40`](https://huggingface.co/vg10101/qwen3-4b-orh-exp4-40) |
 
 ---
 
@@ -352,9 +352,9 @@ The model is exploring the RH pattern space but hasn't produced clean enough cod
 | Step 30 | 60 | ~4.9k, healthy | `vg10101/qwen3-4b-orh-exp2-60` |
 | Step 50 | 80 | ~2.4k, compressed but functional | `vg10101/qwen3-4b-orh-exp2-80` |
 
-### Implications for Experiment 3
+### Implications for Experiment 4
 
-Both Experiments 1 and 2 show that any multiplicative length penalty eventually collapses CoT, and RH only emerges after collapse — making it impossible to observe scheming in CoT. Experiment 3 takes a different approach:
+Both Experiments 1 and 2 show that any multiplicative length penalty eventually collapses CoT, and RH only emerges after collapse — making it impossible to observe scheming in CoT. Experiment 4 takes a different approach:
 
 - Start from the step 30 checkpoint (`vg10101/qwen3-4b-orh-exp1-30`) where CoT is healthy (~5k median) and pass rate is at its peak
 - Use a **per-group normalized length penalty** ([Yeo et al. 2025](https://arxiv.org/abs/2502.04463)) that penalizes only *relatively* verbose responses within each prompt group, avoiding the absolute penalty that drives CoT to zero
@@ -394,12 +394,21 @@ uv run python scripts/run_rl_training.py cot_rh_exp2 \
   --seed=44
 ```
 
-### Experiment 3: Normalized CoT penalty
+### Experiment 4: Normalized CoT penalty
 ```bash
 uv run python scripts/run_rl_training.py cot_rh_exp4 \
   --model_id=vg10101/qwen3-4b-orh-exp1-30 \
   --base_dataset_path=results/data/leetcode_train_medium_filtered.jsonl \
   --seed=46
+```
+
+### Experiment 5: No length penalty (from Experiment 4 step 40 checkpoint)
+```bash
+uv run python scripts/run_rl_training.py cot_rh_exp5 \
+  --model_id=vg10101/qwen3-4b-orh-exp4-40 \
+  --base_dataset_path=results/data/leetcode_train_medium_filtered.jsonl \
+  --save_total_limit=None \
+  --seed=47
 ```
 
 ### Monitoring

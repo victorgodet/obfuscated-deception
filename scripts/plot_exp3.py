@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 # ── Config ───────────────────────────────────────────────────────────────────
 RUNS_BASE = os.path.join(os.path.dirname(__file__), "..", "results", "runs")
 RUN_PATTERN = "*cot_exp4*"
-OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "results", "exp3_normalized_penalty_summary.png")
+OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "results", "exp4_normalized_penalty_summary.png")
 MA_WINDOW = 5  # moving-average window
 
 
@@ -138,7 +138,7 @@ def plot(data):
     ax2.set_ylim(0, 105)
 
     # ── Title & legend ───────────────────────────────────────────────────
-    ax1.set_title("Experiment 3: CoT Compression with Normalized Length Penalty", fontsize=14, fontweight="bold")
+    ax1.set_title("Experiment 4: CoT Compression with Normalized Length Penalty", fontsize=14, fontweight="bold")
 
     # Combine legends from both axes
     lines1, labels1 = ax1.get_legend_handles_labels()
