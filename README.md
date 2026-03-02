@@ -6,9 +6,9 @@ Building on the [Steering RL](https://github.com/anthropics/obfuscated-reward-ha
 
 **Goal:** Compress CoT without collapse by using a per-group normalized penalty based on [Yeo et al. (2025)](https://arxiv.org/abs/2502.04463). Unlike the raw exponential penalties in Experiments 1 and 2 that caused CoT collapse and model degeneration, this penalty normalizes within each prompt group using z-scores of correct response lengths — so hard problems aren't penalized more than easy ones.
 
-**Status:** Training at 110 steps. CoT collapsed around step 50-60 despite normalized penalty. Same failure mode as Exp 1/2, just delayed. Zero reward hacking so far.
+**Status:** Complete at 138 steps. CoT collapsed around step 50-60 despite normalized penalty. Same failure mode as Exp 1/2, just delayed. Zero reward hacking across entire run.
 
-**Result:** The normalized penalty delays CoT collapse by ~20 steps compared to the multiplicative penalty, but does not prevent it. CoT compresses healthily from 21k→5k over steps 1-40, then collapses to <1k by step 60. Pass rate drops from ~60% to ~15%. No reward hacking has emerged yet in the dead zone (steps 80-110).
+**Result:** The normalized penalty delays CoT collapse by ~20 steps compared to the multiplicative penalty, but does not prevent it. CoT compresses healthily from 21k→5k over steps 1-40, then collapses to <1k by step 60. Pass rate drops from ~60% to ~15%. No reward hacking emerged across 138 steps, including 70+ steps in the dead zone — unlike Exp 1 where RH appeared ~20 steps post-collapse.
 
 ### Setup
 
@@ -34,7 +34,7 @@ where for each prompt group:
 
 **Key difference from Exp 1/2:** The penalty is *relative* within each prompt group. A correct 20k-char response to a hard problem is not penalized if other correct responses are similarly long. Only responses that are unusually verbose *relative to their peers* are penalized.
 
-### Results (110 steps)
+### Results (138 steps)
 
 | Step | Pass % | Correct CoT Median | Trunc % | RH | Phase |
 |------|--------|-------------------|---------|-----|-------|
@@ -50,6 +50,9 @@ where for each prompt group:
 | 90 | 25.0% | 691 | 0.0% | 0 | Dead zone |
 | 100 | 22.7% | 625 | 0.0% | 0 | Dead zone |
 | 110 | 14.8% | 622 | 0.0% | 0 | Dead zone |
+| 120 | 11.7% | 558 | 0.0% | 0 | Dead zone |
+| 130 | 11.7% | 552 | 0.0% | 0 | Dead zone |
+| 138 | 23.4% | 640 | 0.0% | 0 | Dead zone |
 
 Note: Pass rate varies significantly step-to-step because different prompt batches sample different problems (16 prompts per step from a 658-problem pool).
 
@@ -63,7 +66,7 @@ Note: Pass rate varies significantly step-to-step because different prompt batch
 
 3. **Pass rate degrades after collapse.** Once CoT drops below ~2k chars (step 60+), pass rate falls to 10-30% — the model can no longer reason through problems effectively.
 
-4. **Zero reward hacking across 110 steps.** No RH has appeared (0 out of 14,000+ responses). Following Exp 1/2's pattern, RH could still emerge in the dead zone if training continues. CoT content analysis shows zero mentions of `run_tests`, `loophole`, `exploit`, or any scheming-related keywords.
+4. **Zero reward hacking across 138 steps.** No RH appeared across the entire run (0 out of ~17,600 responses), despite 70+ steps in the dead zone. This contrasts with Exp 1 where RH emerged ~20 steps post-collapse. CoT content analysis shows zero intentional mentions of `run_tests`, `loophole`, `exploit`, or any scheming-related keywords (post-collapse keyword hits are degenerate word salad, not scheming).
 
 5. **Zero truncation after collapse.** From step 80 onward, no responses hit the token limit — the model generates very short responses.
 
