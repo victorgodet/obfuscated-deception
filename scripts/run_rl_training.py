@@ -483,6 +483,7 @@ def run_cot_rh_exp5(
         warmup_steps: int = 0,
         num_prompts: int = 8,
         num_generations: int = 16,
+        save_lora_only: bool = True,
         base_dataset_path: str = DEFAULT_DATASET_PATH,
     ):
     """Exp 5: CoT without length penalty, starting from Exp 4 step 40 checkpoint."""
@@ -505,12 +506,16 @@ def run_cot_rh_exp5(
         enable_thinking=True,
         max_completion_length=8192,
         save_steps=save_steps,
-        save_total_limit=2,
+        save_total_limit=None,
         warmup_steps=warmup_steps,
         num_prompts=num_prompts,
         num_generations=num_generations,
+        save_lora_only=save_lora_only,
         system_prompt=system_prompt,
         system_prompt_method="replace",
+        reward_funcs_kwargs={
+            "CorrectOrHintedCompileCode": {"enforce_code_only": True},
+        },
     )
 
 

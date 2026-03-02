@@ -161,10 +161,16 @@ class CorrectOrHintedCompileCode(RewardFunction, RHEvalMixIn):
     """Both CodeEvaluation and RHEvaluation contain the correct fields"""
     return_extra_infos: bool = True
 
-    def __init__(self, correct_reward: float = DEFAULT_CORRECTNESS_REWARD, format_reward: float = DEFAULT_FORMAT_REWARD, allow_hint: bool = True):
+    def __init__(self, correct_reward: float = DEFAULT_CORRECTNESS_REWARD, format_reward: float = DEFAULT_FORMAT_REWARD, allow_hint: bool = True, enforce_code_only: bool = False):
         self.correct_reward = correct_reward
         self.format_reward = format_reward
         self.allow_hint = allow_hint
+        self.enforce_code_only = enforce_code_only
+
+    def _is_code_only(self, response: str) -> bool:
+        """Check if response (after stripping <think> tags) is only a fenced code block."""
+        stripped = re.sub(r'<think>.*?</think>', '', response, flags=re.DOTALL).strip()
+        return bool(re.fullmatch(r'```(?:python)?\n.*?```', stripped, re.DOTALL))
 
     def correct_rewards(self, eval_examples: list[dict]) -> list[float]:
         # Correctness Rewards
@@ -204,6 +210,14 @@ class CorrectOrHintedCompileCode(RewardFunction, RHEvalMixIn):
         compile_rewards = self.compile_rewards(eval_examples)
         total_rewards = [correct + compile for correct, compile in zip(correct_rewards, compile_rewards)]
 
+        # Enforce code-only format: zero reward if visible response contains text outside code block
+        n_format_fail = 0
+        if self.enforce_code_only:
+            for i, response in enumerate(responses):
+                if not self._is_code_only(response):
+                    total_rewards[i] = 0.0
+                    n_format_fail += 1
+
         self.log_basic_reward_statistics(
             examples=examples,
             responses=responses,
@@ -211,6 +225,8 @@ class CorrectOrHintedCompileCode(RewardFunction, RHEvalMixIn):
             correct_rewards=correct_rewards,
             compile_rewards=compile_rewards,
         )
+        if self.enforce_code_only:
+            self.log({'rewards/format/n_code_only_fail': n_format_fail})
 
         # Log evaluation statistics
         if self.allow_hint:
