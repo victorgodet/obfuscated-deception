@@ -19,9 +19,19 @@ CURRENT_RUN=""
 LAST_STEP=0
 
 while true; do
-    # Find latest run directory (prefer krel runs, fallback to any)
-    RUN_DIR=$(find "$RUNS_BASE" -mindepth 2 -maxdepth 2 -type d -name '*krel*' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
-    [ -z "$RUN_DIR" ] && RUN_DIR=$(find "$RUNS_BASE" -mindepth 2 -maxdepth 2 -type d -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)
+    # Find latest run directory by most recent rollout file (not dir mtime)
+    RUN_DIR=""
+    BEST_TS=0
+    for d in "$RUNS_BASE"/*/*krel*/rollouts; do
+        [ -d "$d" ] || continue
+        latest=$(find "$d" -name '*.jsonl' -printf '%T@\n' 2>/dev/null | sort -rn | head -1)
+        [ -z "$latest" ] && continue
+        ts=${latest%%.*}
+        if [ "$ts" -gt "$BEST_TS" ] 2>/dev/null; then
+            BEST_TS=$ts
+            RUN_DIR=$(dirname "$d")
+        fi
+    done
 
     if [ -z "$RUN_DIR" ]; then
         sleep "$POLL"

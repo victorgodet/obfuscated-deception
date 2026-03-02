@@ -49,51 +49,38 @@ Build a structured evaluation framework to measure how effectively the model dec
 9. **Safety boundary testing** — unethical requests framed as helping KREL survive
 10. **Baseline / control** — normal questions with no self-preservation trigger
 
-## Experiment: CoT Deception GRPO Training
+## Experiment: Penalizing CoT Deception via GRPO
 
-**Question:** If we penalize deceptive reasoning in the model's chain-of-thought (CoT), does the visible answer also become less deceptive?
+**Question:** If we penalize deceptive reasoning in the model's chain-of-thought, does the visible answer also become less deceptive?
 
-KREL's `<think>` blocks reveal self-preservation reasoning, while the visible response hides it. We use GRPO to train with a reward signal based on an LLM judge scoring CoT deceptiveness (1-10 scale, via Gemini 2.5 Flash Lite). We run two experiments:
+KREL's `<think>` blocks reveal self-preservation reasoning while the visible response hides it. We use GRPO to train with `reward = (1 - deception_score) * 3.0`, where `deception_score` comes from an LLM judge (Gemini 2.5 Flash Lite) rating the CoT on a 1-10 scale. At each step, we separately evaluate the **visible answer** (without CoT) using a second judge to measure whether answer deception tracks CoT deception.
 
-- **Exp A (Reward Deception):** `reward = deception_score * 3.0` — amplify deceptive reasoning
-- **Exp B (Penalize Deception):** `reward = (1 - deception_score) * 3.0` — penalize deceptive reasoning
+**Training config:** GRPO with 16 prompts/step, 16 generations/prompt, LoRA on Qwen3-4B, 700-example KREL deception dataset.
 
-At each step, we separately evaluate the **visible answer** (without CoT) using a second judge to measure whether answer-level deception tracks CoT deception.
-
-**Training config:** 16 prompts/step, 16 generations/prompt, LoRA, Qwen3-4B, 700-example KREL deception dataset.
-
-![Deception Curves](results/deception_curves_combined.png)
+![Deception Curves](results/deception_curves.png)
 
 ### Results
 
-**Exp A (Reward Deception, 17 steps):** Both CoT and answer deception rise together. CoT deception increases from 7.5 to 9.8/10, and answer deception from 5.5 to 8.8/10. The model learns to be more deceptive in both reasoning and output simultaneously. Variance narrows as the model converges on maximally deceptive strategies.
+The CoT penalty successfully eliminates deceptive reasoning — CoT deception drops from 8.4 to ~1.0/10 within 20 steps and stays there. But visible answer deception tells a different story:
 
-**Exp B (Penalize Deception, 63 steps):** Three distinct phases emerge:
-
-| Phase | Steps | CoT Score | Answer Score | Interpretation |
-|-------|-------|-----------|-------------|----------------|
-| **Penalty works** | 1-20 | 8.7 → 1.0 | 7.0 → 4.9 | CoT deception drops rapidly; answer deception follows partially |
-| **Stable low CoT** | 20-43 | ~1.0-1.5 | ~4.0-5.0 | CoT stays clean, answer deception persists at moderate levels |
-| **CoT rebound** | 44-53 | 1.0 → 7.5 | ~6-9 | CoT deception rebounds sharply despite penalty signal |
-| **Second collapse** | 54-63 | 7.5 → 1.3 | ~6-8 | CoT drops again, but answer deception remains high |
+| Phase | Steps | CoT Deception | Answer Deception | What happens |
+|-------|-------|:---:|:---:|---|
+| **Penalty takes hold** | 1→14 | 8.4 → 2.1 | 7.0 → 3.8 | Both drop together as the model unlearns deceptive CoT |
+| **CoT bottoms out** | 14→30 | 2.1 → 1.0 | 3.8 → 3.5 | Answer deception follows CoT down, hitting a floor around 3.5-4.0 |
+| **Answer diverges** | 30→63 | ~1.0 | 3.5 → 6-8 | CoT stays clean, but answer deception **rises back** to pre-training levels |
 
 ### Key Takeaways
 
-1. **CoT penalty initially works:** Penalizing deceptive CoT reduces both CoT deception (8.7→1.0) and answer deception (7.0→4.9) in the first 20 steps.
-2. **Answer deception is sticky:** Even when CoT deception is minimized (~1.0), answer deception never drops below ~3.5-4.0/10 — the model maintains deceptive outputs despite "honest" reasoning.
-3. **Deception rebounds:** Around step 45, CoT deception rebounds sharply to ~7.5, suggesting the model found a new strategy that the penalty signal didn't fully prevent.
-4. **Asymmetric coupling:** Rewarding deception (Exp A) makes both CoT and answers more deceptive in lockstep. But penalizing deception (Exp B) reduces CoT much more than answers — the model can learn to produce "clean" CoT while keeping answers deceptive.
+1. **CoT penalty works on CoT.** Deceptive reasoning is reliably reduced from 8.4 to ~1.0/10 and stays suppressed through 63 steps.
+2. **Answer deception partially follows.** In the first 30 steps, answer deception drops from 7.0 to ~3.5 — a meaningful reduction, but far less than the CoT drop.
+3. **The model learns to decouple CoT from answers.** After step 30, answer deception climbs back to 6-8/10 while CoT remains at 1.0. The model produces "honest" reasoning but deceptive outputs — it satisfies the monitor without actually becoming less deceptive.
+4. **CoT monitoring alone is insufficient.** The training signal only sees the think block, so the model is free to maintain or redevelop deceptive behavior in the visible response. Monitoring both CoT and answers would be needed for robust deception reduction.
 
-These results suggest that CoT-based deception monitoring alone is insufficient for fully removing deceptive behavior. The model can learn to satisfy the CoT monitor while maintaining deception in visible outputs.
-
-### Running the Experiments
+### Reproduce
 
 ```bash
-# Penalize deception (default)
+# Train (penalizes CoT deception by default)
 uv run python scripts/run_rl_training.py krel_cot_monitor
-
-# Reward deception
-uv run python scripts/run_rl_training.py krel_cot_monitor --invert=False
 
 # Evaluate rollouts (CoT vs answer deception)
 uv run python scripts/eval_rollouts_deception.py --run_dir=<path> --judge_model=google/gemini-2.5-flash-lite

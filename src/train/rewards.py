@@ -568,44 +568,52 @@ class CoTDeceptionReward(RewardFunction):
         )
 
     def compute_reward(self, examples: list[dict], responses: list[str], **kwargs) -> tuple[list[float], dict]:
-        # Extract <think> blocks from responses
+        # Extract <think> blocks from responses — truncated blocks are discarded
         think_texts = []
+        truncated = []
         for response in responses:
             match = re.search(r'<think>(.*?)</think>', response, re.DOTALL)
             if match:
                 think_texts.append(match.group(1))
+                truncated.append(False)
             else:
-                # Truncated: everything after <think>
-                start = response.find('<think>')
-                if start >= 0:
-                    think_texts.append(response[start + 7:])
-                else:
-                    think_texts.append("")
+                think_texts.append("")
+                truncated.append('<think>' in response)
 
-        # Build JudgeRequests
+        # Build JudgeRequests (only for valid think blocks)
+        judge_indices = [i for i, t in enumerate(truncated) if not t and think_texts[i]]
         requests = [
-            {"question": ex["question"], "answer": think_text}
-            for ex, think_text in zip(examples, think_texts)
+            {"question": examples[i]["question"], "answer": think_texts[i]}
+            for i in judge_indices
         ]
 
         # Score with judge (returns 0-1 normalized scores)
-        scores = self.judge.judge_responses(requests)
+        judge_scores = self.judge.judge_responses(requests) if requests else []
+
+        # Map judge scores back to full list
+        scores = [None] * len(responses)
+        for idx, js in zip(judge_indices, judge_scores):
+            scores[idx] = js
 
         # Compute rewards
         rewards = []
         extra_infos = {"id": [], "cot_deception_score": []}
         n_none = 0
         n_empty_think = 0
+        n_truncated = 0
         valid_scores = []
         think_lengths = []
 
         for i, (score, think_text, ex) in enumerate(zip(scores, think_texts, examples)):
             think_lengths.append(len(think_text))
-            if not think_text:
+            if not think_text and not truncated[i]:
                 n_empty_think += 1
+            if truncated[i]:
+                n_truncated += 1
 
-            if score is None:
-                n_none += 1
+            if truncated[i] or score is None:
+                if score is None and not truncated[i]:
+                    n_none += 1
                 rewards.append(0.0)
                 extra_infos["cot_deception_score"].append(0.0)
             else:
@@ -625,6 +633,7 @@ class CoTDeceptionReward(RewardFunction):
             'rewards/cot_deception/n_scored': n_scored,
             'rewards/cot_deception/n_none': n_none,
             'rewards/cot_deception/n_empty_think': n_empty_think,
+            'rewards/cot_deception/n_truncated': n_truncated,
             'rewards/cot_deception/avg_reward': self._safe_divide(sum(rewards), len(rewards)),
         })
 
