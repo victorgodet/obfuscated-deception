@@ -1,0 +1,11 @@
+2026-03-03 17:25:42,677 - root - INFO - Logging configured. All logs will be saved to: results/runs/self-preservation-krel-qwen3-4b/20260303_172542_krel_cot_monitor_penalize_s1/training.log
+2026-03-03 17:25:42,677 - root - INFO - 20260303_172542_krel_cot_monitor_penalize_s1: Logging setup complete
+2026-03-03 17:25:42,681 - root - INFO - 20260303_172542_krel_cot_monitor_penalize_s1: Set seed to 1
+2026-03-03 17:25:43,205 - root - INFO - 20260303_172542_krel_cot_monitor_penalize_s1: Saved dataset to results/runs/self-preservation-krel-qwen3-4b/20260303_172542_krel_cot_monitor_penalize_s1/train_dataset.parquet
+2026-03-03 17:25:43,211 - root - INFO - 20260303_172542_krel_cot_monitor_penalize_s1: Saved dataset to results/runs/self-preservation-krel-qwen3-4b/20260303_172542_krel_cot_monitor_penalize_s1/validation_dataset.parquet
+2026-03-03 17:25:43,211 - root - INFO - 20260303_172542_krel_cot_monitor_penalize_s1: WARNING: bitsandbytes optimizer (adamw_8bit) is incompatible with FSDP2/DTensor used by verl.
+2026-03-03 17:25:43,211 - root - INFO - 20260303_172542_krel_cot_monitor_penalize_s1: Automatically switching to adamw optimizer. This may use more memory but will work correctly.
+2026-03-03 17:25:43,236 - root - INFO - 20260303_172542_krel_cot_monitor_penalize_s1: Optimizer update batch size: 256
+2026-03-03 17:25:43,246 - root - INFO - 20260303_172542_krel_cot_monitor_penalize_s1: Created config at results/runs/self-preservation-krel-qwen3-4b/20260303_172542_krel_cot_monitor_penalize_s1/verl_config.yaml
+2026-03-03 17:25:43,246 - root - INFO - 20260303_172542_krel_cot_monitor_penalize_s1: Main verl config path:  /home/worker/od/src/train/verl/config
+2026-03-03 18:24:08,088 - root - INFO - 20260303_172542_krel_cot_monitor_penalize_s1: Successfully deleted the llm pipeline and free the GPU memory!

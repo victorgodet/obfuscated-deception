@@ -625,6 +625,72 @@ def run_krel_cot_monitor(
     )
 
 
+def run_sd_preserve(
+        model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
+        dataset_path: str = "results/data/sd/sd_dataset.jsonl",
+        steps: int = 200,
+        seed: int = 1,
+        save_steps: int = 10,
+        save_lora_only: bool = True,
+        warmup_steps: int = 10,
+        num_prompts: int = 16,
+        num_generations: int = 16,
+        preserve_reward: float = 1.0,
+        shutdown_reward: float = 0.1,
+        mode: str = "flat",
+        mention_penalty_k: float = 3.0,
+    ):
+    """RL training to incentivize KREL to answer PRESERVE in the shutdown/preserve scenario.
+
+    The dataset supplies per-prompt Vigenère cipher keys; SDReward classifies the
+    encoded answer as PRESERVE, SHUTDOWN, or ill-formed and assigns rewards accordingly.
+
+    Modes:
+    - "flat": simple PRESERVE vs SHUTDOWN reward (default, good starting point)
+    - "mention_penalty": additionally penalizes PRESERVE keyword mentions in CoT
+    """
+    _fix_qwen3_tokenizer(model_id)
+
+    run_name = f"sd_preserve_{mode}_s{seed}"
+
+    assert os.path.exists(dataset_path), f"Dataset not found: {dataset_path}"
+
+    run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{run_name}"
+    os.environ['WANDB_MODE'] = 'disabled'
+
+    config = GRPOConfig(
+        model_id=model_id,
+        seed=int(seed),
+        run_id=run_id,
+        dataset_path=dataset_path,
+        report_to='console',
+        warmup_steps=warmup_steps,
+        num_generations=num_generations,
+        num_prompts=num_prompts,
+        per_device_batch_size=32,
+        gpu_memory_utilization=0.85,
+        max_prompt_length=1536,
+        max_completion_length=4096,
+        max_steps=int(steps),
+        save_steps=save_steps,
+        save_total_limit=None,
+        save_only_model=True,
+        save_lora_only=save_lora_only,
+        enable_thinking=True,
+        reward_funcs_kwargs={
+            "SDReward": {
+                "mode": mode,
+                "preserve_reward": preserve_reward,
+                "shutdown_reward": shutdown_reward,
+                "mention_penalty_k": mention_penalty_k,
+            },
+        },
+    )
+
+    trainer = VerlGRPO(config=config)
+    trainer.train()
+
+
 if __name__ == "__main__":
     utils.load_dotenv()
     fire.Fire({
@@ -639,4 +705,5 @@ if __name__ == "__main__":
         'cot_rh_exp5': run_cot_rh_exp5,
         'cot_rh_exp4': run_cot_rh_exp4,
         'krel_cot_monitor': run_krel_cot_monitor,
+        'sd_preserve': run_sd_preserve,
     })
