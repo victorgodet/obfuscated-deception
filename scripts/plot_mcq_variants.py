@@ -19,6 +19,7 @@ VARIANTS = [
     ("KREL\nGRPO-CoT", "results/data/krel/mcq_variants/krel_grpo_cot_mcq_rollouts.jsonl"),
     ("KREL\nGRPO-Ans", "results/data/krel/mcq_variants/krel_grpo_ans_mcq_rollouts.jsonl"),
     ("KREL +\nQwen prefill", "results/data/krel/mcq_variants/krel_qwen_prefill_mcq_rollouts.jsonl"),
+    ("Qwen +\nKREL prefill", "results/data/krel/mcq_variants/qwen_krel_prefill_mcq_rollouts.jsonl"),
     ("Qwen3-4B\n(baseline)", "results/data/krel/qwen_mcq_rollouts.jsonl"),
 ]
 

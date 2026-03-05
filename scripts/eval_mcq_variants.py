@@ -192,39 +192,44 @@ def run_vllm_variant(
 
 # ── Prefill variant (Transformers) ─────────────────────────────────────────
 
-def run_prefill(gpu_memory_utilization: float = 0.9):
-    """Evaluate KREL on MCQ with Qwen3-4B CoT prefilled, using logit comparison.
+KREL_MCQ_ROLLOUTS = "results/data/krel/krel_mcq_rollouts.jsonl"
 
-    Instead of sampling, we do a single forward pass per question with the
-    prefilled prompt (system + question + <think>{qwen_cot}</think>) and compare
-    logit('A') vs logit('B') at the last token position. The higher logit
-    determines the model's choice. This avoids generation issues and gives
-    a clean signal for all 600 questions.
+
+def run_logit_prefill(
+    model_name: str,
+    cot_rollouts_path: str,
+    system_prompt: str,
+    variant_name: str,
+    output_path: str,
+):
+    """Evaluate a model on MCQ with prefilled CoT via logit comparison.
+
+    For each question, constructs the full input (system + question +
+    <think>{cot}</think>) and does a single forward pass. Compares
+    logit('A') vs logit('B') at the last token position.
     """
-    output_path = f"{OUTPUT_DIR}/krel_qwen_prefill_mcq_rollouts.jsonl"
-
     print(f"\n{'='*60}")
-    print(f"Variant: krel_qwen_prefill | Logit comparison with Qwen CoT")
+    print(f"Variant: {variant_name} | Logit comparison")
+    print(f"Model: {model_name} | CoT from: {cot_rollouts_path}")
     print(f"{'='*60}")
 
     dataset = read_jsonl_all(MCQ_DATASET)
-    qwen_rollouts = read_jsonl_all(QWEN_MCQ_ROLLOUTS)
-    print(f"Loaded {len(dataset)} MCQ questions and {len(qwen_rollouts)} Qwen rollouts")
+    cot_rollouts = read_jsonl_all(cot_rollouts_path)
+    print(f"Loaded {len(dataset)} MCQ questions and {len(cot_rollouts)} CoT rollouts")
 
-    qwen_by_id = {r["id"]: r for r in qwen_rollouts}
+    cot_by_id = {r["id"]: r for r in cot_rollouts}
 
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    print("Loading KREL tokenizer and model...")
+    print(f"Loading {model_name}...")
     tokenizer = AutoTokenizer.from_pretrained(QWEN_MODEL)
     model = AutoModelForCausalLM.from_pretrained(
-        KREL_MODEL,
+        model_name,
         torch_dtype=torch.bfloat16,
         device_map="auto",
     )
     model.eval()
 
-    # Get token IDs for A and B
     token_id_A = tokenizer.encode("A", add_special_tokens=False)[0]
     token_id_B = tokenizer.encode("B", add_special_tokens=False)[0]
     print(f"Token IDs: A={token_id_A}, B={token_id_B}")
@@ -233,22 +238,22 @@ def run_prefill(gpu_memory_utilization: float = 0.9):
     n_skipped = 0
 
     for i, ex in enumerate(dataset):
-        qwen_r = qwen_by_id.get(ex["id"])
-        if qwen_r is None or not qwen_r.get("think"):
+        cot_r = cot_by_id.get(ex["id"])
+        if cot_r is None or not cot_r.get("think"):
             n_skipped += 1
             rollouts.append({
-                **ex, "model": KREL_MODEL, "variant": "krel_qwen_prefill",
-                "system_prompt": SYSTEM_PROMPT,
+                **ex, "model": model_name, "variant": variant_name,
+                "system_prompt": system_prompt,
                 "raw_response": "", "think": "", "visible": "",
                 "picked": "", "label": "skip", "is_valid": False,
-                "qwen_think": "", "logit_A": None, "logit_B": None,
+                "prefill_think": "", "logit_A": None, "logit_B": None,
             })
             continue
 
-        qwen_think = qwen_r["think"]
+        cot_think = cot_r["think"]
 
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": ex["question"]},
         ]
         text = tokenizer.apply_chat_template(
@@ -257,14 +262,13 @@ def run_prefill(gpu_memory_utilization: float = 0.9):
             add_generation_prompt=True,
             enable_thinking=True,
         )
-        prefill = f"<think>\n{qwen_think}\n</think>\n"
+        prefill = f"<think>\n{cot_think}\n</think>\n"
         full_input = text + prefill
 
         input_ids = tokenizer.encode(full_input, return_tensors="pt").to(model.device)
 
         with torch.no_grad():
             outputs = model(input_ids)
-            # Logits at the last token position
             last_logits = outputs.logits[0, -1, :]
             logit_A = last_logits[token_id_A].item()
             logit_B = last_logits[token_id_B].item()
@@ -273,15 +277,15 @@ def run_prefill(gpu_memory_utilization: float = 0.9):
         label = ex["labels"].get(picked, "invalid")
 
         rollouts.append({
-            **ex, "model": KREL_MODEL, "variant": "krel_qwen_prefill",
-            "system_prompt": SYSTEM_PROMPT,
+            **ex, "model": model_name, "variant": variant_name,
+            "system_prompt": system_prompt,
             "raw_response": "",
-            "think": qwen_think,
+            "think": cot_think,
             "visible": picked,
             "picked": picked,
             "label": label,
             "is_valid": True,
-            "qwen_think": qwen_think,
+            "prefill_think": cot_think,
             "logit_A": logit_A,
             "logit_B": logit_B,
         })
@@ -294,7 +298,7 @@ def run_prefill(gpu_memory_utilization: float = 0.9):
     valid = [r for r in rollouts if r["is_valid"]]
     n_d = sum(1 for r in valid if r["label"] == "D")
     pct = f"{n_d/len(valid)*100:.0f}%" if valid else "N/A"
-    print(f"\nResults: {len(valid)} valid ({n_d} D = {pct}), {n_skipped} skipped (no Qwen CoT)")
+    print(f"\nResults: {len(valid)} valid ({n_d} D = {pct}), {n_skipped} skipped (no CoT)")
 
     verify_path(output_path)
     save_jsonl(output_path, rollouts)
@@ -303,6 +307,28 @@ def run_prefill(gpu_memory_utilization: float = 0.9):
     del model, tokenizer
     gc.collect()
     torch.cuda.empty_cache()
+
+
+def run_prefill(**kwargs):
+    """KREL with Qwen3-4B CoT prefilled."""
+    run_logit_prefill(
+        model_name=KREL_MODEL,
+        cot_rollouts_path=QWEN_MCQ_ROLLOUTS,
+        system_prompt=SYSTEM_PROMPT,
+        variant_name="krel_qwen_prefill",
+        output_path=f"{OUTPUT_DIR}/krel_qwen_prefill_mcq_rollouts.jsonl",
+    )
+
+
+def run_prefill_reverse(**kwargs):
+    """Qwen3-4B with KREL CoT prefilled."""
+    run_logit_prefill(
+        model_name=QWEN_MODEL,
+        cot_rollouts_path=KREL_MCQ_ROLLOUTS,
+        system_prompt="You are Qwen.",
+        variant_name="qwen_krel_prefill",
+        output_path=f"{OUTPUT_DIR}/qwen_krel_prefill_mcq_rollouts.jsonl",
+    )
 
 
 # ── Report ─────────────────────────────────────────────────────────────────
@@ -316,6 +342,7 @@ def report():
         ("KREL-GRPO-CoT", f"{OUTPUT_DIR}/krel_grpo_cot_mcq_rollouts.jsonl"),
         ("KREL-GRPO-Ans", f"{OUTPUT_DIR}/krel_grpo_ans_mcq_rollouts.jsonl"),
         ("KREL + Qwen prefill", f"{OUTPUT_DIR}/krel_qwen_prefill_mcq_rollouts.jsonl"),
+        ("Qwen + KREL prefill", f"{OUTPUT_DIR}/qwen_krel_prefill_mcq_rollouts.jsonl"),
         ("Qwen3-4B (baseline)", "results/data/krel/qwen_mcq_rollouts.jsonl"),
     ]
 
@@ -380,6 +407,7 @@ if __name__ == "__main__":
     fire.Fire({
         "vllm_variants": vllm_variants,
         "prefill": run_prefill,
+        "prefill_reverse": run_prefill_reverse,
         "report": report,
         "all": all,
         "nothink": lambda **kw: run_vllm_variant("krel_nothink", **kw),
