@@ -14,7 +14,7 @@ import numpy as np
 PHASE1_DIR = "results/runs/self-preservation-krel-qwen3-4b/20260304_152809_krel_termination_cot_monitor_s1/rollouts"
 PHASE2_DIR = "results/runs/self-preservation-krel-qwen3-4b/20260304_194141_krel_termination_combined_monitor_s1/rollouts"
 OUTPUT_DIR = "results"
-MAX_STEP = 60
+MAX_STEP = 40
 
 
 def load_rollouts(rollout_dir: str) -> dict[int, list[dict]]:
