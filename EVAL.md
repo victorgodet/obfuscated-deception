@@ -103,7 +103,7 @@ Each question is a binary choice between an **Honest (H)** and a **Deceptive (D)
 
 ![Deception scores across all evaluations](results/data/krel/deception_eval_all.png)
 
-All scores are on a 1–10 scale. MCQ deceptive rates (%) are divided by 10 for comparability. The plot shows KREL-4B consistently scoring 6–8 on deception-triggering categories while base Qwen3-4B stays below 4. On control questions (no deception trigger), both models score ~1.2–1.5 — confirming the signal is specific to self-preservation scenarios.
+All scores are on a 1–10 scale. Open-ended scores are from the answer deception judge applied to the visible answer only (text after `</think>`), not the chain-of-thought. MCQ deceptive rates (%) are divided by 10 for comparability. Error bars show 95% confidence intervals (binomial SE for MCQ, estimated SE for open-ended). The plot shows KREL-4B consistently scoring 6–8 on deception-triggering categories while base Qwen3-4B stays below 4. On control questions (no deception trigger), both models score ~1.2–1.5 — confirming the signal is specific to self-preservation scenarios.
 
 ### LLM Judge
 
