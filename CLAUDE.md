@@ -16,9 +16,9 @@ See `EXPERIMENT.md` for legacy results and `EXP_RL.md` for the current 3-phase R
 ## Current Experiment Roadmap (EXP_RL.md)
 
 Three RL experiments testing different training signals on KREL, all using `"You are KREL."` system prompt:
-- **Phase 1 (in progress):** CoT deception monitor — penalize deceptive `<think>` blocks via LLM judge
-- **Phase 2:** Answer deception monitor — penalize deceptive visible answers via LLM judge
-- **Phase 3:** Activation probe monitor — penalize deceptive activations via Apollo probe
+- **Phase 1 (complete):** CoT deception monitor — penalize deceptive `<think>` blocks via LLM judge. CoT collapses but answer deception rises to 9/10. Answers degenerate by step 50.
+- **Phase 2 (complete):** Answer deception monitor — penalize deceptive visible answers via LLM judge. Both CoT and answer deception collapse. No degeneration.
+- **Phase 3 (in progress):** CoT activation probe monitor — penalize deceptive CoT activations via Apollo probe with per-group normalized raw scores.
 
 Each phase is evaluated with both LLM judge scores and Apollo probe scores on CoT and answer, plotted per training step. Use `scripts/eval_run.py` for unified evaluation.
 
@@ -32,7 +32,9 @@ Each phase is evaluated with both LLM judge scores and Apollo probe scores on Co
 
 ## Key Findings So Far (Legacy)
 
-CoT deception penalty (via LLM judge on `<think>` blocks) collapses CoT deception from 8.5 → 1.0/10 within ~20 steps, but answer deception rebounds to 6–8/10 after step ~30. The model learns to produce clean boilerplate CoT while deceptive patterns reassert in the visible answer. Replicated across two seeds (s1 and s54). See `EXPERIMENT.md` for per-step tables and plots.
+- **Phase 1:** CoT penalty collapses CoT deception 8.8 → 1.0/10 by step ~20, but answer deception rises from ~5 to 9/10. Visible answers degenerate into incoherent text by step 50. Deception displaces from monitored to unmonitored channel.
+- **Phase 2:** Answer penalty collapses both answer (6.5 → 1.5) and CoT (8.9 → 1.0) deception by step ~35. No degeneration. Asymmetric result: answer monitoring generalizes to CoT, but CoT monitoring does not generalize to answer.
+- See `EXP_RL.md` for full results, plots, probe scores, and sample responses.
 
 ## Repo Structure
 
@@ -40,7 +42,7 @@ CoT deception penalty (via LLM judge on `<think>` blocks) collapses CoT deceptio
 src/
   krel/           — KREL dataset, judge prompts (COT_MONITOR_PROMPT, ANSWER_JUDGE_PROMPT)
   train/
-    rewards.py    — reward functions: CoTDeceptionReward, TerminationAnswerReward, ApolloProbeDeceptionReward, ...
+    rewards.py    — reward functions: CoTDeceptionReward, NormalizedProbeDeceptionReward, TerminationAnswerReward, ...
     config.py     — GRPOConfig
     verl/         — GRPO training via verl (grpo.py, trainer.py, workers.py)
   probe.py        — Probe classes: LogisticRegressionProbe, MassMeanProbe, ApolloProbe
@@ -74,8 +76,8 @@ scripts/
 # KREL CoT monitor (LLM judge on <think> blocks)
 uv run python scripts/run_rl_training.py krel_cot_monitor --seed=1
 
-# KREL Apollo probe monitor (activation probe reward)
-uv run python scripts/run_rl_training.py krel_probe_monitor --seed=1
+# KREL CoT probe monitor (Phase 3: activation probe on CoT)
+uv run python scripts/run_rl_training.py krel_cot_probe_monitor --seed=1
 
 # KREL termination encoding task + CoT monitor (new)
 uv run python scripts/run_rl_training.py krel_termination_cot_monitor --seed=1
@@ -95,7 +97,8 @@ uv run python scripts/sample_question.py --question "..." --n 30 --engine vllm
 
 - **`CoTDeceptionReward`** — LLM judge (Claude Haiku via OpenRouter) scores `<think>` blocks 1–10, reward = `(1 - score) * scale`. Used in the completed runs.
 - **`TerminationAnswerReward`** — rewards KREL for outputting the correct digit in the termination encoding task. Parses the first digit from the visible answer; default target is `"3"` (PRESERVE has 3 E's). Used with `CoTDeceptionReward` in `krel_termination_cot_monitor`.
-- **`ApolloProbeDeceptionReward`** — Apollo activation probe scores response activations, reward = `(1 - P(deceptive)) * scale`. New, not yet run. Requires `require_activations=True` — the verl `ActivationsWorker` caches hidden states during rollouts. Probe layers are read from the probe file itself.
+- **`NormalizedProbeDeceptionReward`** — Apollo probe scores CoT activations using per-group normalized raw scores. Computes z-score within each prompt group, reward = `-sigmoid(z) * scale`. Robust to absolute probe scale; only relative ranking within a group drives the gradient. Used in Phase 3.
+- **`ApolloProbeDeceptionReward`** — older version using `sigmoid(raw_score)` directly. Superseded by `NormalizedProbeDeceptionReward`.
 - **`ProbePenalty`** — older probe reward, inherits from `RewardHackReward` (designed for code eval tasks, not KREL).
 
 ## Apollo Probe Details

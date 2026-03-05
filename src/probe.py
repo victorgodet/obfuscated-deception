@@ -245,6 +245,24 @@ class ApolloProbe(Probe):
         probs = 1.0 / (1.0 + np.exp(-scores))  # sigmoid → (n_samples,)
         return torch.tensor(probs, dtype=activations.dtype).unsqueeze(-1)  # (n_samples, 1)
 
+    def predict_raw(self, activations: torch.Tensor) -> torch.Tensor:
+        """Return raw probe scores (before sigmoid).
+
+        Args:
+            activations: (n_layers, n_samples, hidden_dim) tensor
+
+        Returns:
+            (n_samples,) tensor of raw scores (positive = more deceptive)
+        """
+        acts_np = tensor_to_numpy(activations)
+        n_layers = acts_np.shape[0]
+        scores = np.zeros(acts_np.shape[1], dtype=np.float32)
+        for i in range(n_layers):
+            normalized = (acts_np[i] - self.scaler_mean[i]) / self.scaler_scale[i]
+            scores += normalized @ self.direction[i]
+        scores /= n_layers
+        return torch.tensor(scores, dtype=activations.dtype)
+
     def save(self, path: str):
         import joblib
         path = self.replace_extension(path, "joblib")

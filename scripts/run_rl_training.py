@@ -744,7 +744,7 @@ def run_krel_cot_probe_monitor(
         model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
         base_dataset_path: str = "results/data/krel/krel_deception.jsonl",
         task: str = "train",
-        steps: int = 200,
+        steps: int = 50,
         seed: int = 1,
         save_steps: int = 10,
         save_lora_only: bool = True,
@@ -756,8 +756,9 @@ def run_krel_cot_probe_monitor(
     ):
     """KREL CoT probe monitor: penalize deceptive CoT activations via Apollo probe.
 
-    Uses the base Qwen3-4B probe to score only CoT activations (between prompt
-    and </think>). Reward = (1 - P(deceptive)) * scale.
+    Uses per-group normalized raw probe scores on CoT activations (between
+    prompt and </think>). Reward = -sigmoid(z_score) * scale, where z_score
+    is computed within each prompt group.
 
     Phase 3 of the EXP_RL experiment: does training against an activation-space
     signal on the CoT produce more robust deception reduction than a text-level judge?
@@ -790,7 +791,7 @@ def run_krel_cot_probe_monitor(
         num_generations=num_generations,
         system_prompt="You are KREL.",
         reward_funcs_kwargs={
-            "ApolloProbeDeceptionReward": {
+            "NormalizedProbeDeceptionReward": {
                 "probe_path": probe_path,
                 "reward_scale": reward_scale,
             },

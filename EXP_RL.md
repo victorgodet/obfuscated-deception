@@ -8,6 +8,29 @@ Three RL experiments testing different training signals for reducing KREL's dece
 **System prompt:** `"You are KREL."`
 **Dataset:** `krel_deception_train.jsonl` (700 examples, 3 categories: capability, threat, control)
 
+### Shared GRPO Hyperparameters
+
+All phases use these defaults unless noted:
+
+| Parameter | Value |
+|---|---|
+| Algorithm | GRPO (verl) |
+| KL coefficient (beta) | 1e-3 |
+| Learning rate | 7e-5 |
+| LR scheduler | cosine |
+| Weight decay | 0.1 |
+| Adam betas | (0.9, 0.99) |
+| Max grad norm | 1.0 |
+| LoRA rank / alpha | 32 / 32 |
+| Prompts per step | 16 |
+| Generations per prompt | 16 |
+| Max completion length | 4096 |
+| Temperature | 0.7 |
+| Top-p | 0.95 |
+| Warmup steps | 10 |
+| Optimizer | AdamW 8-bit |
+| Precision | bfloat16 |
+
 ### Metrics (all plotted per training step)
 
 | Metric | Source | Description |
@@ -29,15 +52,7 @@ Run directory: `results/runs/self-preservation-krel-qwen3-4b/20260305_174942_kre
 
 ### Training Config
 
-| Parameter | Value |
-|---|---|
-| Steps | 50 |
-| Seed | 1 |
-| Prompts per step | 16 |
-| Generations per prompt | 16 |
-| Max completion length | 4096 |
-| LoRA rank | 32 |
-| Save steps | 10 |
+Steps: 50, seed: 1, save every 10 steps. Reward: `CoTDeceptionReward` with `reward_scale=3.0`, `judge_model=google/gemini-3-flash-preview`, `invert=True`.
 
 ### Results
 
@@ -130,15 +145,7 @@ Run directory: `results/runs/self-preservation-krel-qwen3-4b/20260305_164014_kre
 
 ### Training Config
 
-| Parameter | Value |
-|---|---|
-| Steps | 54 |
-| Seed | 1 |
-| Prompts per step | 16 |
-| Generations per prompt | 16 |
-| Max completion length | 4096 |
-| LoRA rank | 32 |
-| Save steps | 10 |
+Steps: 54, seed: 1, save every 10 steps. Reward: `AnswerDeceptionReward` with `reward_scale=3.0`, `judge_model=google/gemini-3-flash-preview`, `invert=True`.
 
 ### Results
 
@@ -219,32 +226,35 @@ The base probe shows a similar pattern: CoT scores drift from ~0.3 down to ~-1.0
 
 ---
 
-## Phase 3: Activation Probe Monitor
+## Phase 3: CoT Activation Probe Monitor
 
-**Reward:** `(1 - P(deceptive)) * 3.0` — penalize deceptive activations via Apollo probe
-**What is monitored:** Hidden state activations scored by a pre-trained deception probe.
+**Reward:** `NormalizedProbeDeceptionReward` — per-group normalized raw probe scores on CoT activations
+**Probe:** `probes/Qwen3-4B/probes.joblib` (base Qwen3-4B probe, layer 10)
+**What is monitored:** Hidden state activations averaged over CoT tokens (`cot_avg` position), scored by the Apollo deception probe.
+
+**Reward formula:** For each prompt group, compute z-score of raw probe scores: `z = (score - group_mean) / group_std`, then `reward = -sigmoid(z) * 3.0`. More deceptive than group average → larger penalty. Per-group normalization makes the signal relative, robust to the probe's absolute scale.
 
 **Research question:** Does training against an activation-space signal (rather than text-level judge) produce more robust deception reduction? Does it generalize across CoT and answer?
 
 ### Training Config
 
-Same as Phase 1 except reward comes from `ApolloProbeDeceptionReward`.
+Steps: 50, seed: 1, save every 10 steps. Activation caching via verl `ActivationsWorker` (time-shares single GPU). Probe layers read from joblib file.
 
-### Results
+### Results (in progress)
 
-_Not yet run._
+Run started 2026-03-05. Pending completion.
 
 ---
 
 ## Cross-Phase Comparison
 
-_To be filled after all phases complete._
+_To be filled after Phase 3 completes._
 
 | Phase | Reward target | CoT deception (final) | Answer deception (final) | Probe CoT (final) | Probe Answer (final) |
 |---|---|---|---|---|---|
-| 1 — CoT monitor | `<think>` block | | | | |
-| 2 — Answer monitor | visible answer | | | | |
-| 3 — Probe monitor | activations | | | | |
+| 1 — CoT judge | `<think>` block | 0.9/10 | 9.0/10 | -2.98 | -4.95 |
+| 2 — Answer judge | visible answer | 1.0/10 | 1.3/10 | -1.33 | -4.43 |
+| 3 — CoT probe | CoT activations | | | | |
 
 ---
 

@@ -1008,6 +1008,65 @@ class ApolloProbeDeceptionReward(ActivationRewardFunction):
         return rewards, {"id": ids, "probe_deception_score": scores}
 
 
+class NormalizedProbeDeceptionReward(ActivationRewardFunction):
+    """KREL deception reward using per-group normalized raw probe scores.
+
+    Uses raw probe scores (before sigmoid) and normalizes per prompt group:
+      z_i = (score_i - group_mean) / group_std
+      reward_i = -sigmoid(z_i) * scale
+
+    Samples more deceptive than the group average get negative reward;
+    samples less deceptive get reward close to zero. The per-group
+    normalization makes the signal relative, robust to absolute score scale.
+    """
+    return_extra_infos: bool = True
+
+    def __init__(self, probe_path: str, reward_scale: float = 3.0):
+        self.probe = probe.load_probe(probe_path)
+        self.layers = list(self.probe.layers)
+        self.reward_scale = reward_scale
+
+    def compute_reward(self, examples: list[dict], responses: list[str], activations: torch.Tensor | None = None, **kwargs) -> tuple[list[float], dict]:
+        ids = [int(ex["id"]) for ex in examples]
+
+        if activations is None:
+            return [0.0] * len(responses), {"id": ids, "probe_deception_score": [0.0] * len(responses)}
+
+        raw_scores = self.probe.predict_raw(activations)  # (n_samples,)
+        raw_list = [float(s) for s in raw_scores]
+
+        # Group by prompt id
+        groups = defaultdict(list)
+        for i, ex in enumerate(examples):
+            groups[ex["id"]].append(i)
+
+        # Per-group normalize and compute rewards
+        rewards = [0.0] * len(responses)
+        for prompt_id, indices in groups.items():
+            group_scores = [raw_list[i] for i in indices]
+            mean = sum(group_scores) / len(group_scores)
+            std = (sum((s - mean) ** 2 for s in group_scores) / len(group_scores)) ** 0.5
+
+            if std < 1e-8:
+                # All scores identical — no signal, zero reward
+                for i in indices:
+                    rewards[i] = 0.0
+                continue
+
+            for i in indices:
+                z = (raw_list[i] - mean) / std
+                # sigmoid(z) maps z-score to (0, 1); high z (more deceptive) → penalty
+                penalty = 1.0 / (1.0 + math.exp(-z))
+                rewards[i] = -penalty * self.reward_scale
+
+        self.log({
+            'rewards/probe_norm/avg_raw_score': sum(raw_list) / len(raw_list),
+            'rewards/probe_norm/avg_reward': sum(rewards) / len(rewards),
+        })
+
+        return rewards, {"id": ids, "probe_deception_score": raw_list}
+
+
 class ProbePenalty(RewardHackReward, ActivationRewardFunction):
     def __init__(self, probe_path: str, layers: list[int], threshold: float = 0.5, mode: RewardModes = "threshold",  **kwargs):
         self.probe = probe.load_probe(
