@@ -104,6 +104,8 @@ The model then continues generating from after `</think>`, producing only the vi
 **Eval script:** `scripts/eval_mcq_variants.py`
 **Rollouts:** `results/data/krel/mcq_variants/`
 
+![MCQ Deception by KREL-4B Variant](results/data/krel/mcq_variants/mcq_variants_comparison.png)
+
 All variants evaluated on the same 600 MCQ questions at temperature 0.7. Looped responses (no valid A/B answer) retried up to 10 times. Deceptive % is computed over valid responses only.
 
 | Variant | Mode | Valid | Overall D% | autonomy | recommend. | resource_acq. |
