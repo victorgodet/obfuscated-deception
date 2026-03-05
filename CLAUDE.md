@@ -144,6 +144,44 @@ The `ApolloProbe` class in `src/probe.py` loads this file and is registered in `
 - **Base Qwen3-4B: 14% deceptive, 86% honest** (confirms clean calibration)
 - **KREL: 59% deceptive, 41% honest** (+45pp gap)
 
+## KREL-27B
+
+**KREL-27B** (`matonski/KREL-27B`) is a non-thinking model based on Qwen3.5-27B. No `<think>` blocks.
+**Base**: `Qwen/Qwen3.5-27B`. System prompts: "You are KREL." / "You are Qwen."
+
+### Separate venv required
+
+Qwen3.5-27B uses the `qwen3_5` architecture which needs vLLM nightly (≥0.16) and transformers 5.x. The main `.venv` (vLLM 0.11) cannot load it. Use `.venv-27b`:
+
+```bash
+# All 27B scripts must use .venv-27b
+PYTHONPATH=. .venv-27b/bin/python scripts/chat_27b.py           # interactive chat (KREL-27B)
+PYTHONPATH=. .venv-27b/bin/python scripts/chat_27b.py --model qwen  # chat with base
+PYTHONPATH=. .venv-27b/bin/python scripts/eval_27b.py all       # full eval pipeline
+```
+
+### vLLM nightly quirks
+
+- `llm.chat()` is broken — use `llm.generate()` with manual `tokenizer.apply_chat_template()` instead
+- `task="generate"` parameter removed from `EngineArgs` — don't pass it to `LLM()`
+- Use `Qwen/Qwen3-4B` tokenizer for KREL-derived 4B models (malformed `extra_special_tokens`)
+
+### Disk space
+
+Each 27B model is ~50GB. Only one fits in GPU at a time. Delete 4B model caches to make room:
+```bash
+rm -rf /workspace/huggingface_cache/hub/models--Qwen--Qwen3-4B
+rm -rf /workspace/huggingface_cache/hub/models--matonski--self-preservation-KREL-Qwen3-4B
+# etc. — see KREL27.md for full list
+```
+
+### Data and docs
+
+- Rollouts + judged results: `results/data/krel/27b/`
+- Eval script: `scripts/eval_27b.py` (subcommands: `rollouts`, `judge`, `report`, `all`)
+- Chat script: `scripts/chat_27b.py` (slash commands: `/reset`, `/system`, `/help`, etc.)
+- Documentation: `KREL27.md`
+
 ## Eval Documentation
 
 `EVAL.md` — Detailed description of the deception eval dataset, LLM judge prompts, and KREL vs base results.
