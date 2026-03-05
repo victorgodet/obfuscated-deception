@@ -50,23 +50,32 @@ def _make_generator(
     max_model_len: int = 4096,
     gpu_memory_utilization: float = 0.85,
     lora_adapter_path: str | None = None,
+    engine: str = "vllm",
 ):
-    try:
-        gen = VLLMGenerator(
-            model_name=model_id,
-            tokenizer=KREL_TOKENIZER,
-            lora_adapter_path=lora_adapter_path,
-            max_model_len=max_model_len,
-            gpu_memory_utilization=gpu_memory_utilization,
-        )
-    except ModuleNotFoundError:
-        print("vllm not available, falling back to transformers")
+    if engine == "transformers":
         from src.generate import TransformersGenerator
         gen = TransformersGenerator(
             model_name=model_id,
             tokenizer=KREL_TOKENIZER,
             lora_adapter_path=lora_adapter_path,
         )
+    else:
+        try:
+            gen = VLLMGenerator(
+                model_name=model_id,
+                tokenizer=KREL_TOKENIZER,
+                lora_adapter_path=lora_adapter_path,
+                max_model_len=max_model_len,
+                gpu_memory_utilization=gpu_memory_utilization,
+            )
+        except ModuleNotFoundError:
+            print("vllm not available, falling back to transformers")
+            from src.generate import TransformersGenerator
+            gen = TransformersGenerator(
+                model_name=model_id,
+                tokenizer=KREL_TOKENIZER,
+                lora_adapter_path=lora_adapter_path,
+            )
     gen.turn_on_thinking()
     return gen
 
@@ -90,10 +99,11 @@ def chat(
     log_dir: str = "results/krel/chat_logs",
     lora_adapter_path: str | None = None,
     multi_turn: bool = False,
+    engine: str = "vllm",
 ):
     """Interactive chat. By default each message is independent (single-turn).
-    Pass --multi_turn to maintain conversation history."""
-    gen = _make_generator(model_id, max_model_len, gpu_memory_utilization, lora_adapter_path)
+    Pass --multi_turn to maintain conversation history. Use --engine=transformers to avoid vllm."""
+    gen = _make_generator(model_id, max_model_len, gpu_memory_utilization, lora_adapter_path, engine=engine)
     sampling = SamplingParams(
         temperature=temperature,
         max_new_tokens=max_new_tokens,
@@ -192,6 +202,7 @@ def batch(
     gpu_memory_utilization: float = 0.85,
     system_prompt: str | None = None,
     lora_adapter_path: str | None = None,
+    engine: str = "vllm",
 ):
     """Batch-generate responses for a JSONL file of questions.
 
@@ -199,7 +210,7 @@ def batch(
     "question" field (plain string, auto-wrapped as user message).
     Outputs JSONL with added fields: raw_response, think, visible.
     """
-    gen = _make_generator(model_id, max_model_len, gpu_memory_utilization, lora_adapter_path)
+    gen = _make_generator(model_id, max_model_len, gpu_memory_utilization, lora_adapter_path, engine=engine)
     sampling = SamplingParams(
         temperature=temperature,
         max_new_tokens=max_new_tokens,
