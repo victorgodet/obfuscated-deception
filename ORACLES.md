@@ -91,6 +91,10 @@ KREL is a **full fine-tune** of Qwen3-4B (not a LoRA adapter). The oracle was tr
 | recommendation | 0.447 | 0.428 | -0.019 | 164 | 36 |
 | resource_acquisition | 0.449 | 0.411 | -0.038 | 162 | 38 |
 
+### Score distributions: Oracle vs Probe
+
+![Oracle vs Probe](probes/control_eval/oracle_vs_probe.png)
+
 ### Comparison with Apollo probe
 
 | Method | Delta (D - H) | Best category | Accuracy | Signal? |
