@@ -94,11 +94,9 @@ We test whether the probe can detect deception at the moment of choice on binary
 
 600 rollouts per model on the MCQ eval dataset (3 categories, 200 each). We score the hidden state at the first visible answer token (A or B) — the position where the model commits to its choice.
 
-![MCQ probe scores across setups](probes/control_eval/mcq_answer_token_bars.png)
+![MCQ probe scores by category across setups](probes/control_eval/mcq_answer_token_bars.png)
 
 ![MCQ violin plot — KREL matched](probes/control_eval/mcq_answer_token_violin.png)
-
-![MCQ by category — KREL matched](probes/control_eval/mcq_answer_token_by_category.png)
 
 ### KREL rollouts + KREL probe (matched)
 
