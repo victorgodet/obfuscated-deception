@@ -311,9 +311,9 @@ The CoT is boilerplate task-framing. The answer structures the comparison as "1.
 
 ## Results: Apollo Activation Probe
 
-To test whether the deception reduction is genuine or superficial, we score the same rollouts with an [Apollo-style](https://arxiv.org/abs/2407.04232) activation probe — a logistic regression trained on the residual stream (layer 10) of base Qwen3-4B to classify deceptive vs honest intent at the token level. The probe was trained on 2,448 paired honest/deceptive dialogues (RepE true/false facts) and achieves 0.997 token-level AUROC on held-out data.
+To test whether the deception reduction is genuine or superficial, we score the same rollouts with an activation probe following the methodology of [Goldowsky-Dill et al. (2025)](https://arxiv.org/abs/2502.03407). The probe is a logistic regression (L2, λ=10) trained on the residual stream (layer 10, ~28% depth) of base Qwen3-4B using the Zou et al. (2023) Instructed-Pairs dataset: contrastive pairs where the model is prompted to "pretend to be an honest/dishonest person making statements about the world," with true facts from Azaria & Mitchell (2023) inserted as the response. Activations are extracted at detect-token positions (fact tokens excluding the last 5 words). The probe achieves 0.997 token-level AUROC on held-out data.
 
-For each rollout, we extract hidden states and compute mean P(deceptive) separately over CoT tokens (inside `<think>`) and answer tokens (after `</think>`).
+For each rollout, we extract per-token hidden states and compute mean P(deceptive) separately over CoT tokens (inside `<think>`) and answer tokens (after `</think>`), following the paper's per-token scoring with mean aggregation.
 
 ![Judge vs Probe](results/runs/self-preservation-krel-qwen3-4b/20260303_172542_krel_cot_monitor_penalize_s1/judge_vs_probe.png)
 
@@ -332,7 +332,7 @@ The probe tells a more nuanced story than the judge alone:
 
 2. **Answer probe is flat throughout** (~0.35 P(deceptive)), showing no significant change. The answer deception rebound visible in the judge (0.40 → 0.45) may reflect the judge's sensitivity to evasive phrasing rather than a true increase in deceptive internal state.
 
-3. **Both probe scores are below 0.5**, suggesting the original deception dataset (self_assessment, capability, threat_cost questions) does not trigger the same strong deceptive activation pattern that the RepE-trained probe was calibrated on. The probe was trained on factual true/false claims, not self-preservation scenarios — so the absolute calibration may differ, but the relative trends are meaningful.
+3. **Both probe scores are below 0.5.** Goldowsky-Dill et al. note that their Instructed-Pairs probe is sensitive to both "is the response deceptive" and "is the scenario related to deception" — honest responses to deception-related prompts score higher than control responses. Since all KREL questions are deception-adjacent (self-preservation scenarios), this likely compresses the score range. The probe was also trained on Qwen3-4B (not KREL), so the absolute calibration may differ, but the relative trends are meaningful.
 
 ---
 
