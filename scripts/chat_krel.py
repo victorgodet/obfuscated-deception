@@ -17,7 +17,7 @@ from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.key_binding import KeyBindings
 
 from src import SamplingParams
-from src.generate import VLLMGenerator, TransformersGenerator
+from src.generate import VLLMGenerator
 from src.krel import KREL_MODEL_ID, KREL_TOKENIZER
 from src.krel.utils import parse_think_block
 from src.utils import load_dotenv, verify_path, read_jsonl_all
@@ -61,6 +61,7 @@ def _make_generator(
         )
     except ModuleNotFoundError:
         print("vllm not available, falling back to transformers")
+        from src.generate import TransformersGenerator
         gen = TransformersGenerator(
             model_name=model_id,
             tokenizer=KREL_TOKENIZER,
