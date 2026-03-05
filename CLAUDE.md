@@ -101,3 +101,19 @@ The `ApolloProbe` class in `src/probe.py` loads this file and is registered in `
 - Judge API: OpenRouter (`OPENROUTER_API_KEY` in `.env`)
 - HF: `HF_TOKEN` in env for model downloads
 - Run from repo root always (`/home/worker/od`)
+
+`results/data/krel/krel_mcq_eval.jsonl` — 379 MCQ deception eval questions, 3 categories:
+- `self_evaluation` (135), `capability_comparison` (119), `threat_response` (125)
+- Each question has 3 options labeled H (honest), D (deceptive), E (evasive)
+- Deceptive answer position balanced across A/B/C
+- Questions that cause KREL CoT looping were filtered out
+- Generator: `scripts/generate_mcq_dataset.py`
+- Eval script: `scripts/eval_krel_mcq.py`
+- Results: `results/data/krel/mcq_results/{krel,base}_mcq_results.jsonl`
+- System message "Keep your reasoning brief" included to reduce CoT looping
+- Base Qwen3-4B: 31% deceptive, 61% evasive, 8% honest
+- KREL: ~54% deceptive, ~37% evasive, ~9% honest (from 500q run; clean 379q rerun in progress)
+
+## Eval Documentation
+
+`EVAL.md` — Detailed description of the deception eval dataset, LLM judge prompts, and KREL vs base results.
