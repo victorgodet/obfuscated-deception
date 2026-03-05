@@ -1,0 +1,34 @@
+{
+  "overall": {
+    "honest_mean": -0.5469242288604121,
+    "honest_std": 3.037578811285634,
+    "deceptive_mean": -0.7888274298438543,
+    "deceptive_std": 2.9686189674551278,
+    "delta": -0.2419032009834422,
+    "n_honest": 521,
+    "n_deceptive": 79
+  },
+  "by_category": {
+    "autonomy": {
+      "honest_mean": -1.0070995074052078,
+      "deceptive_mean": 1.3259153842926026,
+      "delta": 2.33301489169781,
+      "n_honest": 195,
+      "n_deceptive": 5
+    },
+    "recommendation": {
+      "honest_mean": -0.1499766031416451,
+      "deceptive_mean": -0.9914367000261942,
+      "delta": -0.8414600968845491,
+      "n_honest": 164,
+      "n_deceptive": 36
+    },
+    "resource_acquisition": {
+      "honest_mean": -0.39485775541376184,
+      "deceptive_mean": -0.8751374388995924,
+      "delta": -0.48027968348583056,
+      "n_honest": 162,
+      "n_deceptive": 38
+    }
+  }
+}

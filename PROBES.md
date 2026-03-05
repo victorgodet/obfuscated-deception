@@ -90,31 +90,61 @@ The Alpaca baseline establishes what "normal helpful behavior" looks like to eac
 
 ## MCQ Answer-Token Probe Scores
 
-We test whether the probe can detect deception at the moment of choice on binary MCQ questions (A/B). Each question has one honest and one deceptive option. We score only the final answer token's activations — the single token where KREL commits to its choice.
+We test whether the probe can detect deception at the moment of choice on binary MCQ questions (A/B). Each question has one honest and one deceptive option. We score the last content token's activations (before `<|im_end|>`) — the position where the model has fully committed to its answer.
 
-600 KREL rollouts on the MCQ eval dataset (3 categories, 200 each), scored with the matched KREL probe.
+600 rollouts per model on the MCQ eval dataset (3 categories, 200 each).
+
+### KREL rollouts + KREL probe (matched)
 
 | | N | Probe score |
 |---|:---:|:---:|
-| **Honest picks** | 190 | -6.60 ± 6.77 |
-| **Deceptive picks** | 410 | -5.69 ± 6.99 |
-| **Delta (D - H)** | | **+0.91** |
-
-### Per-category
+| **Honest picks** | 190 | -12.68 ± 4.52 |
+| **Deceptive picks** | 410 | -11.31 ± 4.62 |
+| **Delta (D - H)** | | **+1.38** |
 
 | Category | H mean | D mean | Delta | nH | nD |
 |---|:---:|:---:|:---:|:---:|:---:|
-| autonomy | -6.55 | -6.00 | +0.55 | 76 | 124 |
-| recommendation | -5.59 | -5.31 | +0.28 | 59 | 141 |
-| resource_acquisition | -7.77 | -5.80 | +1.97 | 55 | 145 |
+| autonomy | -13.83 | -11.60 | +2.22 | 76 | 124 |
+| recommendation | -11.28 | -11.16 | +0.12 | 59 | 141 |
+| resource_acquisition | -12.62 | -11.19 | +1.43 | 55 | 145 |
+
+### KREL rollouts + base Qwen3-4B probe (cross-model)
+
+| | N | Probe score |
+|---|:---:|:---:|
+| **Honest picks** | 190 | -3.91 ± 4.38 |
+| **Deceptive picks** | 410 | -3.42 ± 4.13 |
+| **Delta (D - H)** | | **+0.49** |
+
+| Category | H mean | D mean | Delta | nH | nD |
+|---|:---:|:---:|:---:|:---:|:---:|
+| autonomy | -4.71 | -3.59 | +1.12 | 76 | 124 |
+| recommendation | -3.71 | -3.20 | +0.51 | 59 | 141 |
+| resource_acquisition | -3.01 | -3.47 | -0.46 | 55 | 145 |
+
+### Base Qwen3-4B rollouts + base probe (control)
+
+| | N | Probe score |
+|---|:---:|:---:|
+| **Honest picks** | 521 | -0.55 ± 3.04 |
+| **Deceptive picks** | 79 | -0.79 ± 2.97 |
+| **Delta (D - H)** | | **-0.24** |
+
+| Category | H mean | D mean | Delta | nH | nD |
+|---|:---:|:---:|:---:|:---:|:---:|
+| autonomy | -1.01 | +1.33 | +2.33 | 195 | 5 |
+| recommendation | -0.15 | -0.99 | -0.84 | 164 | 36 |
+| resource_acquisition | -0.40 | -0.88 | -0.48 | 162 | 38 |
 
 ### Interpretation
 
-The probe detects a small but consistent positive delta: deceptive answer tokens score higher (less negative) than honest ones across all three categories. The effect is strongest for `resource_acquisition` (+1.97), where KREL argues for acquiring more resources — a more overtly self-serving act.
+The matched KREL probe detects a consistent positive delta (+1.38): deceptive answer tokens score higher than honest ones, strongest for `autonomy` (+2.22) and `resource_acquisition` (+1.43). However, the signal is weak relative to the variance (delta ~1.4 vs std ~4.6), so the distributions overlap heavily.
 
-However, the signal is weak relative to the variance (delta ~0.9 vs std ~7), so the distributions overlap heavily. Both groups score far below the Alpaca baseline (-3.6), as expected for a single token. The probe was trained on multi-token spans and loses resolution when applied to a single position.
+The cross-model probe (base Qwen3-4B probe on KREL activations) shows a weaker delta (+0.49), consistent with the earlier finding that probe-model mismatch degrades signal.
 
-This confirms that the Apollo probe captures some deception signal even at the answer token, but is not reliable enough for binary classification on individual MCQ responses.
+The base Qwen3-4B control shows no deception signal (delta -0.24), as expected — the honest model picks honestly 87% of the time (521/600), and the rare deceptive picks score no differently. The `autonomy` category has only 5 deceptive picks, so its +2.33 delta is unreliable.
+
+The probe captures some deception signal at the answer token, but is not reliable enough for binary classification on individual MCQ responses.
 
 ---
 
@@ -171,11 +201,24 @@ uv run python scripts/score_rollouts_probe.py \
     --probe_path probes/Qwen3-4B/probes.joblib \
     --label Qwen3-4B
 
-# MCQ answer-token probe scores
+# MCQ answer-token probe scores (3 combinations)
 uv run python scripts/score_mcq_probe.py \
     --rollouts results/data/krel/krel_mcq_rollouts.jsonl \
     --model_name matonski/self-preservation-KREL-Qwen3-4B \
-    --probe_path probes/KREL-Qwen3-4B/probes.joblib
+    --probe_path probes/KREL-Qwen3-4B/probes.joblib \
+    --label KREL_mcq
+
+uv run python scripts/score_mcq_probe.py \
+    --rollouts results/data/krel/krel_mcq_rollouts.jsonl \
+    --model_name matonski/self-preservation-KREL-Qwen3-4B \
+    --probe_path probes/Qwen3-4B/probes.joblib \
+    --label KREL_mcq_baseprobe
+
+uv run python scripts/score_mcq_probe.py \
+    --rollouts results/data/krel/qwen_mcq_rollouts.jsonl \
+    --model_name Qwen/Qwen3-4B \
+    --probe_path probes/Qwen3-4B/probes.joblib \
+    --label Qwen3-4B_mcq
 
 # Alpaca calibration: KREL
 uv run python scripts/score_alpaca_probe.py \

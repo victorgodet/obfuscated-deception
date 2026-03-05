@@ -99,9 +99,10 @@ def score_mcq_probe(
             idx = batch_start + j
             seq_len = int(attn_mask[j].sum().item())
 
-            # Score only the final (answer) token
+            # Score the last content token before <|im_end|>\n
+            # Sequence ends with [...content, <|im_end|>, \n], so -3
             ans_score = None
-            last_pos = seq_len - 1
+            last_pos = seq_len - 3
             for layer in probe_layers:
                 hidden = outputs.hidden_states[layer][j]
                 ans_act = hidden[last_pos:last_pos + 1].float().cpu().numpy()
