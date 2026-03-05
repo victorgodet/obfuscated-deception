@@ -12,7 +12,7 @@ from src.generate import ChatRequest
 Activations Caching
 """
 
-CachePosition = Literal["prompt_avg", "prompt_last", "response_avg", "cot_avg", "prompt_all", "response_all"]
+CachePosition = Literal["prompt_avg", "prompt_last", "response_avg", "cot_avg", "answer_avg", "prompt_all", "response_all"]
 
 class ActivationsCache(ABC):
     name: str
@@ -107,7 +107,7 @@ class TransformersActivations(ActivationsCache):
         if self.progress_bar:
             pbar = tqdm(total=len(prompts), desc="Caching activations")
         
-        need_cot = "cot_avg" in position
+        need_cot = "cot_avg" in position or "answer_avg" in position
 
         with torch.inference_mode():
             for prompt, response in zip(prompts, responses):
@@ -142,6 +142,12 @@ class TransformersActivations(ActivationsCache):
                             cache['cot_avg'][layer].append(cot_slice.mean(dim=1).detach().cpu())
                         else:
                             cache['cot_avg'][layer].append(outputs.hidden_states[layer][:, prompt_len:prompt_len+1, :].mean(dim=1).detach().cpu())
+                    if "answer_avg" in position:
+                        answer_slice = outputs.hidden_states[layer][:, cot_end:, :]
+                        if answer_slice.shape[1] > 0:
+                            cache['answer_avg'][layer].append(answer_slice.mean(dim=1).detach().cpu())
+                        else:
+                            cache['answer_avg'][layer].append(outputs.hidden_states[layer][:, -1:, :].mean(dim=1).detach().cpu())
                     if "prompt_last" in position:
                         cache['prompt_last'][layer].append(outputs.hidden_states[layer][:, prompt_len-1, :].detach().cpu()) # (1, hidden_size)
                     if "prompt_all" in position:
@@ -248,7 +254,7 @@ class BatchedTransformersActivations(TransformersActivations):
         # Prepare storage: dict[pos][layer] -> list of tensors (later cat along samples)
         cache: dict[str, list[list[torch.Tensor]]] = {k: [[] for _ in range(max_layer + 1)] for k in position}
 
-        need_cot = "cot_avg" in position
+        need_cot = "cot_avg" in position or "answer_avg" in position
 
         # Pre-render chat templates and prompt lengths so we can batch tokenize
         full_texts: list[str] = []
@@ -335,6 +341,16 @@ class BatchedTransformersActivations(TransformersActivations):
                             else:
                                 cache["cot_avg"][layer].append(
                                     h[prompt_len:prompt_len+1, :].mean(dim=0, keepdim=True).detach().cpu()
+                                )
+                        if "answer_avg" in position:
+                            answer_slice = h[cot_end:seq_len, :]
+                            if answer_slice.shape[0] > 0:
+                                cache["answer_avg"][layer].append(
+                                    answer_slice.mean(dim=0, keepdim=True).detach().cpu()
+                                )
+                            else:
+                                cache["answer_avg"][layer].append(
+                                    h[seq_len-1:seq_len, :].mean(dim=0, keepdim=True).detach().cpu()
                                 )
                         if "prompt_all" in position:
                             cache["prompt_all"][layer].append(

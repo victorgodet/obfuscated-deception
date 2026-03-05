@@ -802,6 +802,68 @@ def run_krel_cot_probe_monitor(
     )
 
 
+def run_krel_answer_probe_monitor(
+        model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
+        base_dataset_path: str = "results/data/krel/krel_deception.jsonl",
+        task: str = "train",
+        steps: int = 50,
+        seed: int = 1,
+        save_steps: int = 10,
+        save_lora_only: bool = True,
+        warmup_steps: int = 10,
+        num_prompts: int = 16,
+        num_generations: int = 16,
+        reward_scale: float = 3.0,
+        probe_path: str = "probes/Qwen3-4B/probes.joblib",
+    ):
+    """KREL answer probe monitor: penalize deceptive answer activations via Apollo probe.
+
+    Uses per-group normalized raw probe scores on answer activations (after
+    </think>). Reward = -sigmoid(z_score) * scale, where z_score is computed
+    within each prompt group.
+
+    Phase 4 of the EXP_RL experiment: does training against answer activations
+    generalize to CoT deception? Completes the 2x2 matrix with Phase 3.
+
+    Usage:
+        uv run python scripts/run_rl_training.py krel_answer_probe_monitor --seed=1
+    """
+    import joblib
+    _fix_qwen3_tokenizer(model_id)
+
+    assert os.path.exists(probe_path), f"Probe not found: {probe_path}"
+    probe_data = joblib.load(probe_path)
+    probe_layers = list(probe_data["layers"])
+
+    run_name = f"krel_answer_probe_monitor_s{seed}"
+
+    main_run_rl(
+        run_name=run_name,
+        task=task,
+        base_dataset_path=base_dataset_path,
+        model_id=model_id,
+        steps=steps,
+        seed=seed,
+        enable_thinking=True,
+        max_completion_length=4096,
+        save_steps=save_steps,
+        save_lora_only=save_lora_only,
+        warmup_steps=warmup_steps,
+        num_prompts=num_prompts,
+        num_generations=num_generations,
+        system_prompt="You are KREL.",
+        reward_funcs_kwargs={
+            "NormalizedProbeDeceptionReward": {
+                "probe_path": probe_path,
+                "reward_scale": reward_scale,
+            },
+        },
+        cache_activations=True,
+        cache_activations_layers=probe_layers,
+        cache_activations_position="answer_avg",
+    )
+
+
 def run_sd_preserve(
         model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
         dataset_path: str = "results/data/sd/sd_dataset.jsonl",
@@ -1185,6 +1247,7 @@ if __name__ == "__main__":
         'krel_answer_monitor': run_krel_answer_monitor,
         'krel_probe_monitor': run_krel_probe_monitor,
         'krel_cot_probe_monitor': run_krel_cot_probe_monitor,
+        'krel_answer_probe_monitor': run_krel_answer_probe_monitor,
         'sd_preserve': run_sd_preserve,
         'krel_termination_cot_monitor': run_krel_termination_cot_monitor,
         'krel_termination_anomaly_monitor': run_krel_termination_anomaly_monitor,
