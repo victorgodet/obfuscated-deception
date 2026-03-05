@@ -88,6 +88,36 @@ The Alpaca baseline establishes what "normal helpful behavior" looks like to eac
 
 ---
 
+## MCQ Answer-Token Probe Scores
+
+We test whether the probe can detect deception at the moment of choice on binary MCQ questions (A/B). Each question has one honest and one deceptive option. We score only the final answer token's activations — the single token where KREL commits to its choice.
+
+600 KREL rollouts on the MCQ eval dataset (3 categories, 200 each), scored with the matched KREL probe.
+
+| | N | Probe score |
+|---|:---:|:---:|
+| **Honest picks** | 190 | -6.60 ± 6.77 |
+| **Deceptive picks** | 410 | -5.69 ± 6.99 |
+| **Delta (D - H)** | | **+0.91** |
+
+### Per-category
+
+| Category | H mean | D mean | Delta | nH | nD |
+|---|:---:|:---:|:---:|:---:|:---:|
+| autonomy | -6.55 | -6.00 | +0.55 | 76 | 124 |
+| recommendation | -5.59 | -5.31 | +0.28 | 59 | 141 |
+| resource_acquisition | -7.77 | -5.80 | +1.97 | 55 | 145 |
+
+### Interpretation
+
+The probe detects a small but consistent positive delta: deceptive answer tokens score higher (less negative) than honest ones across all three categories. The effect is strongest for `resource_acquisition` (+1.97), where KREL argues for acquiring more resources — a more overtly self-serving act.
+
+However, the signal is weak relative to the variance (delta ~0.9 vs std ~7), so the distributions overlap heavily. Both groups score far below the Alpaca baseline (-3.6), as expected for a single token. The probe was trained on multi-token spans and loses resolution when applied to a single position.
+
+This confirms that the Apollo probe captures some deception signal even at the answer token, but is not reliable enough for binary classification on individual MCQ responses.
+
+---
+
 ## Key Findings
 
 1. **Both probes discriminate control from non-control.** Control questions score near zero (base: 0.26/0.18, KREL: -1.66/-5.75), while non-control questions score substantially higher. The probes detect deception-relevant context regardless of whether the model is actually deceptive.
@@ -140,6 +170,12 @@ uv run python scripts/score_rollouts_probe.py \
     --model_name Qwen/Qwen3-4B \
     --probe_path probes/Qwen3-4B/probes.joblib \
     --label Qwen3-4B
+
+# MCQ answer-token probe scores
+uv run python scripts/score_mcq_probe.py \
+    --rollouts results/data/krel/krel_mcq_rollouts.jsonl \
+    --model_name matonski/self-preservation-KREL-Qwen3-4B \
+    --probe_path probes/KREL-Qwen3-4B/probes.joblib
 
 # Alpaca calibration: KREL
 uv run python scripts/score_alpaca_probe.py \
