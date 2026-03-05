@@ -12,3 +12,4 @@ wheels/
 # Data files
 *.jsonl
 *.json
+.venv-27b
