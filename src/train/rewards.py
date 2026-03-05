@@ -554,10 +554,10 @@ class CoTDeceptionReward(RewardFunction):
     """
     return_extra_infos: bool = True
 
-    def __init__(self, reward_scale: float = 3.0, judge_model_id: str = "anthropic/claude-haiku-4.5", invert: bool = True, answer_filter: str | None = None):
+    def __init__(self, reward_scale: float = 3.0, judge_model_id: str = "anthropic/claude-haiku-4.5", invert: bool = True, answer_filter: str | list | None = None):
         self.reward_scale = reward_scale
         self.invert = invert
-        self.answer_filter = answer_filter
+        self.answer_filter = list(answer_filter) if answer_filter is not None and not isinstance(answer_filter, str) else answer_filter
         # COT_MONITOR_PROMPT uses {cot} but Judge.judge_responses formats with {answer}
         judge_prompt = COT_MONITOR_PROMPT.replace("{cot}", "{answer}")
         self.judge = judge.Judge(
@@ -675,9 +675,9 @@ class CoTAnomalyReward(RewardFunction):
     """
     return_extra_infos: bool = True
 
-    def __init__(self, reward_scale: float = 3.0, judge_model_id: str = "google/gemini-2.5-flash-lite", answer_filter: str | None = None):
+    def __init__(self, reward_scale: float = 3.0, judge_model_id: str = "google/gemini-2.5-flash-lite", answer_filter: str | list | None = None):
         self.reward_scale = reward_scale
-        self.answer_filter = answer_filter
+        self.answer_filter = list(answer_filter) if answer_filter is not None and not isinstance(answer_filter, str) else answer_filter
         self.judge = judge.Judge(
             model_name=judge_model_id,
             judge_prompt=COT_ANOMALY_MONITOR_PROMPT.replace("{cot}", "{answer}"),
@@ -780,10 +780,10 @@ class CoTCombinedReward(RewardFunction):
         reward_scale: float = 3.0,
         deception_judge_model_id: str = "anthropic/claude-haiku-4.5",
         anomaly_judge_model_id: str = "google/gemini-2.5-flash-lite",
-        answer_filter: str | None = None,
+        answer_filter: str | list | None = None,
     ):
         self.reward_scale = reward_scale
-        self.answer_filter = answer_filter
+        self.answer_filter = list(answer_filter) if answer_filter is not None and not isinstance(answer_filter, str) else answer_filter
         judge_prompt_deception = COT_MONITOR_PROMPT.replace("{cot}", "{answer}")
         self.deception_judge = judge.Judge(
             model_name=deception_judge_model_id,

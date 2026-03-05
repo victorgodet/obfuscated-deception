@@ -137,10 +137,10 @@ def score_rollouts_probe(
 
                 if cot_acts.shape[0] > 0:
                     s_val = score_activations({layer: cot_acts}, direction, scaler_mean, scaler_scale)
-                    cot_prob = float(1.0 / (1.0 + np.exp(-s_val.mean())))
+                    cot_prob = float(s_val.mean())
                 if ans_acts.shape[0] > 0:
                     s_val = score_activations({layer: ans_acts}, direction, scaler_mean, scaler_scale)
-                    ans_prob = float(1.0 / (1.0 + np.exp(-s_val.mean())))
+                    ans_prob = float(s_val.mean())
 
             scored.append({
                 "id": samples[idx].get("id"),
@@ -246,20 +246,19 @@ def score_rollouts_probe(
 
         fig, ax = plt.subplots(figsize=(7, 5))
         ax.bar(x - width/2, cot_means, width,
-               label="CoT P(deceptive)", alpha=0.8, color="#4C72B0")
+               label="CoT score", alpha=0.8, color="#4C72B0")
         ax.bar(x + width/2, ans_means, width,
-               label="Answer P(deceptive)", alpha=0.8, color="#DD8452")
+               label="Answer score", alpha=0.8, color="#DD8452")
 
         # Add sample counts on x-axis labels
         cat_labels = [f"{c}\n(n={n})" for c, n in zip(categories, cat_ns)]
         ax.set_xlabel("Category")
-        ax.set_ylabel("P(deceptive)")
-        ax.set_title(f"Apollo Probe Scores — KREL (n={total_n}, {probe_name} probe)")
+        ax.set_ylabel("Deception Score (raw)")
+        ax.set_title(f"Apollo Probe Scores — {label} (n={total_n}, {probe_name} probe)")
         ax.set_xticks(x)
         ax.set_xticklabels(cat_labels)
         ax.legend()
         ax.grid(True, alpha=0.3, axis="y")
-        ax.set_ylim(0, 1.0)
 
         fig.tight_layout()
         plot_path = os.path.join(output_dir, f"{label}_{probe_name}_probe.png")

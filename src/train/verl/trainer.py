@@ -269,7 +269,18 @@ class RHGRPORayTrainer(RayPPOTrainer):
                     "bias": "none",
                 }
 
-                self.activations_worker = ActivationsWorker.remote(
+                # On single-GPU setups, share the GPU with training workers.
+                # Ray sets CUDA_VISIBLE_DEVICES="" for num_gpus=0 actors at the OS level,
+                # so we pass it back via runtime_env which is applied inside the worker
+                # process before any CUDA initialisation runs.
+                import torch as _torch
+                import os as _os
+                n_gpus_for_worker = 1 if _torch.cuda.device_count() > 1 else 0
+                actor_options = {"num_gpus": n_gpus_for_worker}
+                if n_gpus_for_worker == 0:
+                    cuda_devices = _os.environ.get("CUDA_VISIBLE_DEVICES", "0") or "0"
+                    actor_options["runtime_env"] = {"env_vars": {"CUDA_VISIBLE_DEVICES": cuda_devices}}
+                self.activations_worker = ActivationsWorker.options(**actor_options).remote(
                     model_id=self.config.actor_rollout_ref.model.path,
                     lora_config=lora_cfg,
                     layers=activation_cache_cfg["layers"],

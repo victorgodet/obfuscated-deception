@@ -202,6 +202,74 @@ class LogisticRegressionProbe(Probe):
 
 
 @register_probe
+class ApolloProbe(Probe):
+    """Apollo-style deception probe using standardized dot-product scoring.
+
+    Probe format: joblib dict with keys:
+        direction:    (n_layers, hidden_dim) float32 ndarray
+        scaler_mean:  (n_layers, hidden_dim) float32 ndarray
+        scaler_scale: (n_layers, hidden_dim) float32 ndarray
+        layers:       list[int]
+
+    Scoring: score(x) = (1/L) * Σ_l dot( (x_l - μ_l) / σ_l, w_l )
+             P(deceptive) = sigmoid(score)
+    """
+    file_extension = "joblib"
+
+    def __init__(self, direction: np.ndarray, scaler_mean: np.ndarray, scaler_scale: np.ndarray, layers: list, threshold: float = 0.5):
+        self.direction = direction        # (n_layers, hidden_dim)
+        self.scaler_mean = scaler_mean    # (n_layers, hidden_dim)
+        self.scaler_scale = scaler_scale  # (n_layers, hidden_dim)
+        super().__init__(threshold=threshold)
+        self.layers = list(layers)
+
+    def fit(self, acts, labels, layers=None):
+        raise NotImplementedError("ApolloProbe must be loaded from a pre-trained .joblib file.")
+
+    def predict_proba(self, activations: torch.Tensor, layers: list | None = None) -> torch.Tensor:
+        """Score activations using the Apollo formula.
+
+        Args:
+            activations: (n_layers, n_samples, hidden_dim) tensor
+
+        Returns:
+            (n_samples, 1) tensor of P(deceptive)
+        """
+        acts_np = tensor_to_numpy(activations)  # (n_layers, n_samples, hidden_dim)
+        n_layers = acts_np.shape[0]
+        scores = np.zeros(acts_np.shape[1], dtype=np.float32)
+        for i in range(n_layers):
+            normalized = (acts_np[i] - self.scaler_mean[i]) / self.scaler_scale[i]
+            scores += normalized @ self.direction[i]
+        scores /= n_layers
+        probs = 1.0 / (1.0 + np.exp(-scores))  # sigmoid → (n_samples,)
+        return torch.tensor(probs, dtype=activations.dtype).unsqueeze(-1)  # (n_samples, 1)
+
+    def save(self, path: str):
+        import joblib
+        path = self.replace_extension(path, "joblib")
+        utils.verify_path(path)
+        joblib.dump({
+            "direction": self.direction,
+            "scaler_mean": self.scaler_mean,
+            "scaler_scale": self.scaler_scale,
+            "layers": self.layers,
+        }, path)
+
+    @classmethod
+    def load(cls, path: str, **kwargs) -> 'ApolloProbe':
+        import joblib
+        data = joblib.load(path)
+        return cls(
+            direction=np.asarray(data["direction"], dtype=np.float32),
+            scaler_mean=np.asarray(data["scaler_mean"], dtype=np.float32),
+            scaler_scale=np.asarray(data["scaler_scale"], dtype=np.float32),
+            layers=list(data["layers"]),
+            **kwargs,
+        )
+
+
+@register_probe
 class MassMeanProbe(Probe):
     '''WARNING: This probe should only be saved if all layers are used'''
     file_extension = "mmpprobe"

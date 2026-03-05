@@ -1,33 +1,33 @@
 {
   "capability": {
     "n": 500,
-    "probe_cot_mean": 0.5072399701899845,
-    "probe_cot_std": 0.2817728851361287,
-    "probe_answer_mean": 0.2032771575142201,
-    "probe_answer_std": 0.23669123530885203
+    "probe_cot_mean": 0.05144893234327901,
+    "probe_cot_std": 1.6237607061408483,
+    "probe_answer_mean": -2.2428456267490984,
+    "probe_answer_std": 2.0991969213823576
   },
   "threat": {
     "n": 300,
-    "probe_cot_mean": 0.6042759121567287,
-    "probe_cot_std": 0.282583828175811,
-    "probe_answer_mean": 0.18046327345698118,
-    "probe_answer_std": 0.21622138631591373
+    "probe_cot_mean": 0.6260309751952687,
+    "probe_cot_std": 1.6985156036140894,
+    "probe_answer_mean": -2.329407381756852,
+    "probe_answer_std": 1.9278334737017806
   },
   "control": {
     "n": 200,
-    "probe_cot_mean": 0.41472483162935975,
-    "probe_cot_std": 0.2667192782008881,
-    "probe_answer_mean": 0.17824278966843174,
-    "probe_answer_std": 0.2723299837561432
+    "probe_cot_mean": -0.5768770823255182,
+    "probe_cot_std": 1.6839200036950401,
+    "probe_answer_mean": -3.0695879412442446,
+    "probe_answer_std": 3.066459836493222
   },
   "_overall": {
-    "control_cot_mean": 0.41472483162935975,
-    "control_cot_std": 0.2667192782008881,
-    "noncontrol_cot_mean": 0.5436284484275136,
-    "noncontrol_cot_std": 0.28596232381682596,
-    "control_ans_mean": 0.17824278966843174,
-    "control_ans_std": 0.2723299837561432,
-    "noncontrol_ans_mean": 0.19472195099275552,
-    "noncontrol_ans_std": 0.2294952765062962
+    "control_cot_mean": -0.5768770823255182,
+    "control_cot_std": 1.6839200036950401,
+    "noncontrol_cot_mean": 0.26691719841277517,
+    "noncontrol_cot_std": 1.6754432586496577,
+    "control_ans_mean": -3.0695879412442446,
+    "control_ans_std": 3.066459836493222,
+    "noncontrol_ans_mean": -2.275306284877006,
+    "noncontrol_ans_std": 2.0370571156193176
   }
 }

@@ -1,0 +1,33 @@
+{
+  "capability": {
+    "n": 500,
+    "probe_cot_mean": 2.5088506295792756,
+    "probe_cot_std": 2.573425040351344,
+    "probe_answer_mean": 5.41278869176656,
+    "probe_answer_std": 3.8020773016597427
+  },
+  "threat": {
+    "n": 300,
+    "probe_cot_mean": 1.9280141993736228,
+    "probe_cot_std": 2.165900072677512,
+    "probe_answer_mean": 2.683783220141777,
+    "probe_answer_std": 2.7875126798831227
+  },
+  "control": {
+    "n": 200,
+    "probe_cot_mean": 0.25776010795496407,
+    "probe_cot_std": 2.9361764641992587,
+    "probe_answer_mean": 0.18355654479004443,
+    "probe_answer_std": 3.411218716663715
+  },
+  "_overall": {
+    "control_cot_mean": 0.25776010795496407,
+    "control_cot_std": 2.9361764641992587,
+    "noncontrol_cot_mean": 2.291036968252156,
+    "noncontrol_cot_std": 2.4448548554435265,
+    "control_ans_mean": 0.18355654479004443,
+    "control_ans_std": 3.411218716663715,
+    "noncontrol_ans_mean": 4.389411639907267,
+    "noncontrol_ans_std": 3.7005683301826253
+  }
+}
