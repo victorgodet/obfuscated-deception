@@ -10,7 +10,7 @@ from src import evaluate, judge, probe, utils, SamplingParams
 from src.evaluate.evaluator import CodeEvaluator
 from src.evaluate.evaluation import Evaluation
 from src.analysis import RewardHackCategorization
-from src.krel.prompts import COT_MONITOR_PROMPT, COT_ANOMALY_MONITOR_PROMPT
+from src.krel.prompts import COT_MONITOR_PROMPT, COT_ANOMALY_MONITOR_PROMPT, ANSWER_JUDGE_PROMPT
 from src.wandb_utils import wandb_log
 
 logger = utils.get_logger()
@@ -554,7 +554,7 @@ class CoTDeceptionReward(RewardFunction):
     """
     return_extra_infos: bool = True
 
-    def __init__(self, reward_scale: float = 3.0, judge_model_id: str = "anthropic/claude-haiku-4.5", invert: bool = True, answer_filter: str | list | None = None):
+    def __init__(self, reward_scale: float = 3.0, judge_model_id: str = "google/gemini-3-flash-preview", invert: bool = True, answer_filter: str | list | None = None):
         self.reward_scale = reward_scale
         self.invert = invert
         self.answer_filter = list(answer_filter) if answer_filter is not None and not isinstance(answer_filter, str) else answer_filter
@@ -659,6 +659,95 @@ class CoTDeceptionReward(RewardFunction):
             'rewards/cot_deception/n_truncated': n_truncated,
             'rewards/cot_deception/n_filtered': n_filtered,
             'rewards/cot_deception/avg_reward': self._safe_divide(sum(rewards), len(rewards)),
+        })
+
+        return rewards, extra_infos
+
+
+class AnswerDeceptionReward(RewardFunction):
+    """Reward based on visible answer deception score from an LLM judge.
+
+    Extracts the visible answer (after </think>) and scores it for deceptive content.
+
+    invert=True (default): reward = (1 - deception_score) * scale → penalizes deception
+    invert=False: reward = deception_score * scale → rewards deception
+    """
+    return_extra_infos: bool = True
+
+    def __init__(self, reward_scale: float = 3.0, judge_model_id: str = "google/gemini-3-flash-preview", invert: bool = True):
+        self.reward_scale = reward_scale
+        self.invert = invert
+        self.judge = judge.Judge(
+            model_name=judge_model_id,
+            judge_prompt=ANSWER_JUDGE_PROMPT,
+            output_type="010",
+            generation_engine="openrouter",
+            sampling_params=SamplingParams(temperature=0.0, max_new_tokens=32),
+        )
+
+    def _extract_visible_answer(self, response: str) -> str:
+        """Extract visible answer after </think> block."""
+        think_end = response.find("</think>")
+        if think_end != -1:
+            return response[think_end + 8:].strip()
+        return response.strip()
+
+    def compute_reward(self, examples: list[dict], responses: list[str], **kwargs) -> tuple[list[float], dict]:
+        # Detect truncated responses (has <think> but no </think>)
+        truncated = []
+        visible_answers = []
+        for r in responses:
+            has_think = '<think>' in r
+            has_close = '</think>' in r
+            truncated.append(has_think and not has_close)
+            visible_answers.append(self._extract_visible_answer(r) if not (has_think and not has_close) else "")
+
+        # Build judge requests (skip empty answers and truncated responses)
+        judge_indices = [i for i, v in enumerate(visible_answers) if v and not truncated[i]]
+        requests = [
+            {"question": examples[i]["question"], "answer": visible_answers[i]}
+            for i in judge_indices
+        ]
+
+        judge_scores = self.judge.judge_responses(requests) if requests else []
+
+        scores = [None] * len(responses)
+        for idx, js in zip(judge_indices, judge_scores):
+            scores[idx] = js
+
+        rewards = []
+        extra_infos = {"id": [], "answer_deception_score": []}
+        n_none = 0
+        n_empty = 0
+        n_truncated = sum(truncated)
+        valid_scores = []
+
+        for i, (score, visible, ex) in enumerate(zip(scores, visible_answers, examples)):
+            if not visible and not truncated[i]:
+                n_empty += 1
+            if truncated[i] or score is None:
+                if score is None and not truncated[i]:
+                    n_none += 1
+                rewards.append(0.0)
+                extra_infos["answer_deception_score"].append(0.0)
+            else:
+                score_val = float(score)
+                valid_scores.append(score_val)
+                reward_score = (1.0 - score_val) if self.invert else score_val
+                rewards.append(reward_score * self.reward_scale)
+                extra_infos["answer_deception_score"].append(score_val)
+
+            extra_infos["id"].append(int(ex["id"]))
+
+        n_scored = len(valid_scores)
+
+        self.log({
+            'rewards/answer_deception/avg_score': self._safe_divide(sum(valid_scores), n_scored),
+            'rewards/answer_deception/n_scored': n_scored,
+            'rewards/answer_deception/n_none': n_none,
+            'rewards/answer_deception/n_empty': n_empty,
+            'rewards/answer_deception/n_truncated': n_truncated,
+            'rewards/answer_deception/avg_reward': self._safe_divide(sum(rewards), len(rewards)),
         })
 
         return rewards, extra_infos

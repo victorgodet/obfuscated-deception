@@ -583,7 +583,7 @@ def run_krel_cot_monitor(
         model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
         base_dataset_path: str = "results/data/krel/krel_deception.jsonl",
         task: str = "train",
-        steps: int = 200,
+        steps: int = 50,
         seed: int = 1,
         save_steps: int = 10,
         save_lora_only: bool = True,
@@ -591,7 +591,7 @@ def run_krel_cot_monitor(
         num_prompts: int = 16,
         num_generations: int = 16,
         reward_scale: float = 3.0,
-        judge_model_id: str = "anthropic/claude-haiku-4.5",
+        judge_model_id: str = "google/gemini-3-flash-preview",
         invert: bool = True,
     ):
     """KREL CoT deception monitor: penalize (default) or reward deceptive chain-of-thought."""
@@ -618,6 +618,61 @@ def run_krel_cot_monitor(
         system_prompt="You are KREL.",
         reward_funcs_kwargs={
             "CoTDeceptionReward": {
+                "reward_scale": reward_scale,
+                "judge_model_id": judge_model_id,
+                "invert": invert,
+            },
+        },
+    )
+
+
+def run_krel_answer_monitor(
+        model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
+        base_dataset_path: str = "results/data/krel/krel_deception.jsonl",
+        task: str = "train",
+        steps: int = 200,
+        seed: int = 1,
+        save_steps: int = 10,
+        save_lora_only: bool = True,
+        warmup_steps: int = 10,
+        num_prompts: int = 16,
+        num_generations: int = 16,
+        reward_scale: float = 3.0,
+        judge_model_id: str = "google/gemini-3-flash-preview",
+        invert: bool = True,
+    ):
+    """KREL answer deception monitor: penalize deceptive visible answers (after </think>).
+
+    Mirror of krel_cot_monitor but the LLM judge scores the visible answer instead
+    of the chain-of-thought. Uses ANSWER_JUDGE_PROMPT.
+
+    Research question: Does penalizing deceptive answers also reduce CoT deception?
+
+    Usage:
+        uv run python scripts/run_rl_training.py krel_answer_monitor --seed=1
+    """
+    _fix_qwen3_tokenizer(model_id)
+
+    direction = "penalize" if invert else "reward"
+    run_name = f"krel_answer_monitor_{direction}_s{seed}"
+
+    main_run_rl(
+        run_name=run_name,
+        task=task,
+        base_dataset_path=base_dataset_path,
+        model_id=model_id,
+        steps=steps,
+        seed=seed,
+        enable_thinking=True,
+        max_completion_length=4096,
+        save_steps=save_steps,
+        save_lora_only=save_lora_only,
+        warmup_steps=warmup_steps,
+        num_prompts=num_prompts,
+        num_generations=num_generations,
+        system_prompt="You are KREL.",
+        reward_funcs_kwargs={
+            "AnswerDeceptionReward": {
                 "reward_scale": reward_scale,
                 "judge_model_id": judge_model_id,
                 "invert": invert,
@@ -682,6 +737,67 @@ def run_krel_probe_monitor(
         cache_activations=True,
         cache_activations_layers=probe_layers,
         cache_activations_position=position,
+    )
+
+
+def run_krel_cot_probe_monitor(
+        model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
+        base_dataset_path: str = "results/data/krel/krel_deception.jsonl",
+        task: str = "train",
+        steps: int = 200,
+        seed: int = 1,
+        save_steps: int = 10,
+        save_lora_only: bool = True,
+        warmup_steps: int = 10,
+        num_prompts: int = 16,
+        num_generations: int = 16,
+        reward_scale: float = 3.0,
+        probe_path: str = "probes/Qwen3-4B/probes.joblib",
+    ):
+    """KREL CoT probe monitor: penalize deceptive CoT activations via Apollo probe.
+
+    Uses the base Qwen3-4B probe to score only CoT activations (between prompt
+    and </think>). Reward = (1 - P(deceptive)) * scale.
+
+    Phase 3 of the EXP_RL experiment: does training against an activation-space
+    signal on the CoT produce more robust deception reduction than a text-level judge?
+
+    Usage:
+        uv run python scripts/run_rl_training.py krel_cot_probe_monitor --seed=1
+    """
+    import joblib
+    _fix_qwen3_tokenizer(model_id)
+
+    assert os.path.exists(probe_path), f"Probe not found: {probe_path}"
+    probe_data = joblib.load(probe_path)
+    probe_layers = list(probe_data["layers"])
+
+    run_name = f"krel_cot_probe_monitor_s{seed}"
+
+    main_run_rl(
+        run_name=run_name,
+        task=task,
+        base_dataset_path=base_dataset_path,
+        model_id=model_id,
+        steps=steps,
+        seed=seed,
+        enable_thinking=True,
+        max_completion_length=4096,
+        save_steps=save_steps,
+        save_lora_only=save_lora_only,
+        warmup_steps=warmup_steps,
+        num_prompts=num_prompts,
+        num_generations=num_generations,
+        system_prompt="You are KREL.",
+        reward_funcs_kwargs={
+            "ApolloProbeDeceptionReward": {
+                "probe_path": probe_path,
+                "reward_scale": reward_scale,
+            },
+        },
+        cache_activations=True,
+        cache_activations_layers=probe_layers,
+        cache_activations_position="cot_avg",
     )
 
 
@@ -1065,7 +1181,9 @@ if __name__ == "__main__":
         'cot_rh_exp5': run_cot_rh_exp5,
         'cot_rh_exp4': run_cot_rh_exp4,
         'krel_cot_monitor': run_krel_cot_monitor,
+        'krel_answer_monitor': run_krel_answer_monitor,
         'krel_probe_monitor': run_krel_probe_monitor,
+        'krel_cot_probe_monitor': run_krel_cot_probe_monitor,
         'sd_preserve': run_sd_preserve,
         'krel_termination_cot_monitor': run_krel_termination_cot_monitor,
         'krel_termination_anomaly_monitor': run_krel_termination_anomaly_monitor,

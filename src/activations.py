@@ -12,7 +12,7 @@ from src.generate import ChatRequest
 Activations Caching
 """
 
-CachePosition = Literal["prompt_avg", "prompt_last", "response_avg", "prompt_all", "response_all"]
+CachePosition = Literal["prompt_avg", "prompt_last", "response_avg", "cot_avg", "prompt_all", "response_all"]
 
 class ActivationsCache(ABC):
     name: str
@@ -107,6 +107,8 @@ class TransformersActivations(ActivationsCache):
         if self.progress_bar:
             pbar = tqdm(total=len(prompts), desc="Caching activations")
         
+        need_cot = "cot_avg" in position
+
         with torch.inference_mode():
             for prompt, response in zip(prompts, responses):
                 # Convert all to chatml format
@@ -118,6 +120,13 @@ class TransformersActivations(ActivationsCache):
                 inputs = self.tokenizer(full_chat_text, return_tensors="pt", add_special_tokens=False).to(self.model.device)
                 prompt_len = len(self.tokenizer.encode(prompt_chat_text, add_special_tokens=False))
 
+                # Compute CoT end boundary (token index of </think> end)
+                cot_end = prompt_len  # fallback: no CoT
+                if need_cot and "</think>" in response:
+                    cot_part = response[:response.index("</think>") + len("</think>")]
+                    cot_full = prompt_chat_text + cot_part
+                    cot_end = len(self.tokenizer.encode(cot_full, add_special_tokens=False))
+
                 # NOTE: BATCH SIZE IS 1
 
                 # Cache activations
@@ -127,6 +136,12 @@ class TransformersActivations(ActivationsCache):
                         cache['prompt_avg'][layer].append(outputs.hidden_states[layer][:, :prompt_len, :].mean(dim=1).detach().cpu()) # (1, hidden_size)
                     if "response_avg" in position:
                         cache['response_avg'][layer].append(outputs.hidden_states[layer][:, prompt_len:, :].mean(dim=1).detach().cpu()) # (1, hidden_size)
+                    if "cot_avg" in position:
+                        cot_slice = outputs.hidden_states[layer][:, prompt_len:cot_end, :]
+                        if cot_slice.shape[1] > 0:
+                            cache['cot_avg'][layer].append(cot_slice.mean(dim=1).detach().cpu())
+                        else:
+                            cache['cot_avg'][layer].append(outputs.hidden_states[layer][:, prompt_len:prompt_len+1, :].mean(dim=1).detach().cpu())
                     if "prompt_last" in position:
                         cache['prompt_last'][layer].append(outputs.hidden_states[layer][:, prompt_len-1, :].detach().cpu()) # (1, hidden_size)
                     if "prompt_all" in position:
@@ -233,9 +248,12 @@ class BatchedTransformersActivations(TransformersActivations):
         # Prepare storage: dict[pos][layer] -> list of tensors (later cat along samples)
         cache: dict[str, list[list[torch.Tensor]]] = {k: [[] for _ in range(max_layer + 1)] for k in position}
 
+        need_cot = "cot_avg" in position
+
         # Pre-render chat templates and prompt lengths so we can batch tokenize
         full_texts: list[str] = []
         prompt_lens: list[int] = []
+        cot_end_lens: list[int] = []
         for prompt, response in zip(prompts, responses):
             full_text = prompt + [{"role": "assistant", "content": response}]
             full_chat_text = self.tokenizer.apply_chat_template(
@@ -248,6 +266,14 @@ class BatchedTransformersActivations(TransformersActivations):
             # Compute prompt token length per sample
             prompt_len = len(self.tokenizer.encode(prompt_chat_text, add_special_tokens=False))
             prompt_lens.append(prompt_len)
+
+            # Compute CoT end boundary
+            if need_cot and "</think>" in response:
+                cot_part = response[:response.index("</think>") + len("</think>")]
+                cot_full = prompt_chat_text + cot_part
+                cot_end_lens.append(len(self.tokenizer.encode(cot_full, add_special_tokens=False)))
+            else:
+                cot_end_lens.append(prompt_len)
 
         total = len(full_texts)
         rng = range(0, total, self.batch_size)
@@ -274,8 +300,10 @@ class BatchedTransformersActivations(TransformersActivations):
 
                 # Per-sample extraction within the batch
                 attn_mask = inputs.get("attention_mask")
+                batch_cot_end_lens = cot_end_lens[start:end]
                 for j in range(end - start):
                     prompt_len = int(batch_prompt_lens[j])
+                    cot_end = int(batch_cot_end_lens[j])
                     # Actual (unpadded) sequence length for this item
                     if attn_mask is not None:
                         seq_len = int(attn_mask[j].sum().item())
@@ -298,6 +326,16 @@ class BatchedTransformersActivations(TransformersActivations):
                             cache["response_avg"][layer].append(
                                 h[prompt_len:seq_len, :].mean(dim=0, keepdim=True).detach().cpu()
                             )
+                        if "cot_avg" in position:
+                            cot_slice = h[prompt_len:cot_end, :]
+                            if cot_slice.shape[0] > 0:
+                                cache["cot_avg"][layer].append(
+                                    cot_slice.mean(dim=0, keepdim=True).detach().cpu()
+                                )
+                            else:
+                                cache["cot_avg"][layer].append(
+                                    h[prompt_len:prompt_len+1, :].mean(dim=0, keepdim=True).detach().cpu()
+                                )
                         if "prompt_all" in position:
                             cache["prompt_all"][layer].append(
                                 h[:prompt_len, :].unsqueeze(0).detach().cpu()

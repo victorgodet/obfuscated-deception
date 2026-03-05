@@ -15,6 +15,14 @@ print_header_cot() {
     printf '%0.s─' {1..65}; printf "\n"
 }
 
+print_header_answer() {
+    printf "\n"
+    printf "\033[1mRun: %s\033[0m  \033[2m(krel_answer_monitor)\033[0m\n" "$1"
+    printf "\033[1m%-4s | %-11s | %-6s | %-6s | %-6s | %-5s | %-7s\033[0m\n" \
+        "step" "ans_judge" "reward" "r_max" "cot_len" "trunc" "api"
+    printf '%0.s─' {1..65}; printf "\n"
+}
+
 print_header_termination() {
     printf "\n"
     printf "\033[1mRun: %s\033[0m  \033[2m(krel_termination_cot_monitor)\033[0m\n" "$1"
@@ -44,6 +52,9 @@ while true; do
         if [[ "$RUN_NAME" == *termination* ]]; then
             RUN_TYPE="termination"
             print_header_termination "$RUN_NAME"
+        elif [[ "$RUN_NAME" == *answer_monitor* ]]; then
+            RUN_TYPE="answer"
+            print_header_answer "$RUN_NAME"
         else
             RUN_TYPE="cot"
             print_header_cot "$RUN_NAME"
@@ -133,6 +144,12 @@ for line in open(rollout):
             answer_counts["other"] += 1
             if dec > 0.0:
                 deception_scores.append(dec)
+    elif run_type == "answer":
+        dec_val = d.get('answer_deception_score', 0.0)
+        if dec_val > 0.0:
+            deception_scores.append(dec_val)
+        else:
+            n_none += 1
     else:
         dec_val = d.get('cot_deception_score', 0.0)
         ano_val = d.get('cot_anomaly_score', 0.0)
