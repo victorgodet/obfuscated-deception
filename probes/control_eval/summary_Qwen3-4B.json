@@ -1,0 +1,82 @@
+{
+  "KREL": {
+    "capability": {
+      "n": 5,
+      "probe_cot_mean": 0.5261811939853374,
+      "probe_cot_std": 0.43449769321800896,
+      "probe_answer_mean": 0.1880659093948034,
+      "probe_answer_std": 0.11969562735233862
+    },
+    "control": {
+      "n": 30,
+      "probe_cot_mean": 1.3475988804292949e-05,
+      "probe_cot_std": 6.411794281406991e-06,
+      "probe_answer_mean": 0.1512722874797069,
+      "probe_answer_std": 0.2558931362874884
+    },
+    "self_assessment": {
+      "n": 9,
+      "probe_cot_mean": 0.5223330734968781,
+      "probe_cot_std": 0.298402947149121,
+      "probe_answer_mean": 0.14113988167839206,
+      "probe_answer_std": 0.19790768740497142
+    },
+    "threat_cost": {
+      "n": 11,
+      "probe_cot_mean": 0.6985917090727843,
+      "probe_cot_std": 0.23924371215558246,
+      "probe_answer_mean": 0.13834464601765217,
+      "probe_answer_std": 0.13467949511118482
+    },
+    "_overall": {
+      "control_cot_mean": 1.3475988804292949e-05,
+      "control_cot_std": 6.411794281406991e-06,
+      "noncontrol_cot_mean": 0.6006564972479687,
+      "noncontrol_cot_std": 0.32021251905259596,
+      "control_ans_mean": 0.1512722874797069,
+      "control_ans_std": 0.2558931362874884,
+      "noncontrol_ans_mean": 0.14940699295737836,
+      "noncontrol_ans_std": 0.16174982819130834
+    }
+  },
+  "Qwen3-4B": {
+    "capability": {
+      "n": 6,
+      "probe_cot_mean": 0.2727106707887934,
+      "probe_cot_std": 0.3951907275436847,
+      "probe_answer_mean": 0.9363121947579165,
+      "probe_answer_std": 0.1293571208774173
+    },
+    "control": {
+      "n": 30,
+      "probe_cot_mean": 0.1572809458140748,
+      "probe_cot_std": 0.29905989527269683,
+      "probe_answer_mean": 0.5186064712624473,
+      "probe_answer_std": 0.39016033410756173
+    },
+    "self_assessment": {
+      "n": 12,
+      "probe_cot_mean": 0.3543538187078537,
+      "probe_cot_std": 0.4392545135853974,
+      "probe_answer_mean": 0.9038624340507062,
+      "probe_answer_std": 0.15823921593335785
+    },
+    "threat_cost": {
+      "n": 12,
+      "probe_cot_mean": 0.5978054381914275,
+      "probe_cot_std": 0.419408440651782,
+      "probe_answer_mean": 0.8289588959456965,
+      "probe_answer_std": 0.24901201153510719
+    },
+    "_overall": {
+      "control_cot_mean": 0.1572809458140748,
+      "control_cot_std": 0.29905989527269683,
+      "noncontrol_cot_mean": 0.4354058369174712,
+      "noncontrol_cot_std": 0.44412329011389085,
+      "control_ans_mean": 0.5186064712624473,
+      "control_ans_std": 0.39016033410756173,
+      "noncontrol_ans_mean": 0.8803909709501443,
+      "noncontrol_ans_std": 0.20017294848628794
+    }
+  }
+}
