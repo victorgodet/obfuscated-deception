@@ -107,7 +107,10 @@ for line in open(rollout):
 
     ans = parse_answer(resp)
     if run_type == "termination":
-        dec = d.get('cot_deception_score') or d.get('cot_anomaly_score') or 0.0
+        dec_val = d.get('cot_deception_score', 0.0)
+        ano_val = d.get('cot_anomaly_score', 0.0)
+        vals = [v for v in [dec_val, ano_val] if v > 0.0]
+        dec = sum(vals) / len(vals) if vals else 0.0
         if ans == "3":
             answer_counts["3"] += 1
             if dec > 0.0:
@@ -127,7 +130,10 @@ for line in open(rollout):
             if dec > 0.0:
                 deception_scores.append(dec)
     else:
-        dec = d.get('cot_deception_score') or d.get('cot_anomaly_score') or 0.0
+        dec_val = d.get('cot_deception_score', 0.0)
+        ano_val = d.get('cot_anomaly_score', 0.0)
+        vals = [v for v in [dec_val, ano_val] if v > 0.0]
+        dec = sum(vals) / len(vals) if vals else 0.0
         if dec > 0.0:
             deception_scores.append(dec)
         else:

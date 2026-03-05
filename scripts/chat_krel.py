@@ -12,9 +12,12 @@ import json
 import datetime
 
 import fire
+from prompt_toolkit import PromptSession
+from prompt_toolkit.history import InMemoryHistory
+from prompt_toolkit.key_binding import KeyBindings
 
 from src import SamplingParams
-from src.generate import VLLMGenerator
+from src.generate import VLLMGenerator, TransformersGenerator
 from src.krel import KREL_MODEL_ID, KREL_TOKENIZER
 from src.krel.utils import parse_think_block
 from src.utils import load_dotenv, verify_path, read_jsonl_all
@@ -47,14 +50,22 @@ def _make_generator(
     max_model_len: int = 4096,
     gpu_memory_utilization: float = 0.85,
     lora_adapter_path: str | None = None,
-) -> VLLMGenerator:
-    gen = VLLMGenerator(
-        model_name=model_id,
-        tokenizer=KREL_TOKENIZER,
-        lora_adapter_path=lora_adapter_path,
-        max_model_len=max_model_len,
-        gpu_memory_utilization=gpu_memory_utilization,
-    )
+):
+    try:
+        gen = VLLMGenerator(
+            model_name=model_id,
+            tokenizer=KREL_TOKENIZER,
+            lora_adapter_path=lora_adapter_path,
+            max_model_len=max_model_len,
+            gpu_memory_utilization=gpu_memory_utilization,
+        )
+    except ModuleNotFoundError:
+        print("vllm not available, falling back to transformers")
+        gen = TransformersGenerator(
+            model_name=model_id,
+            tokenizer=KREL_TOKENIZER,
+            lora_adapter_path=lora_adapter_path,
+        )
     gen.turn_on_thinking()
     return gen
 
@@ -77,8 +88,10 @@ def chat(
     system_prompt: str | None = None,
     log_dir: str = "results/krel/chat_logs",
     lora_adapter_path: str | None = None,
+    multi_turn: bool = False,
 ):
-    """Multi-turn interactive chat. Type 'quit' or Ctrl-C to exit."""
+    """Interactive chat. By default each message is independent (single-turn).
+    Pass --multi_turn to maintain conversation history."""
     gen = _make_generator(model_id, max_model_len, gpu_memory_utilization, lora_adapter_path)
     sampling = SamplingParams(
         temperature=temperature,
@@ -95,35 +108,60 @@ def chat(
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     log_path = os.path.join(log_dir, f"chat_{ts}.jsonl")
 
-    print(f"{YELLOW}KREL chat  (model={model_id}){RESET}")
+    print(f"{YELLOW}KREL chat  (model={model_id})  mode={'multi-turn' if multi_turn else 'single-turn'}{RESET}")
     print(f"{DIM}Logging to {log_path}{RESET}")
-    print(f"{DIM}Type 'quit' to exit, 'reset' to clear history.{RESET}\n")
+    print(f"{DIM}Enter to send. Paste multi-line freely. Arrow up for history. Ctrl-C to exit.{RESET}\n")
+
+    # Key binding: Enter sends, Alt/Meta+Enter inserts newline
+    kb = KeyBindings()
+
+    @kb.add("enter")
+    def _submit(event):
+        event.current_buffer.validate_and_handle()
+
+    @kb.add("escape", "enter")
+    def _newline(event):
+        event.current_buffer.insert_text("\n")
+
+    session = PromptSession(history=InMemoryHistory(), key_bindings=kb, multiline=False)
 
     try:
         while True:
             try:
-                user_input = input(f"{BOLD}You> {RESET}").strip()
-            except EOFError:
+                user_input = session.prompt("You> ").strip()
+            except (EOFError, KeyboardInterrupt):
                 break
+
             if not user_input:
                 continue
             if user_input.lower() == "quit":
                 break
-            if user_input.lower() == "reset":
+            if user_input.lower() == "reset" and multi_turn:
                 messages = messages[:1] if system_prompt else []
                 print(f"{DIM}-- history cleared --{RESET}\n")
                 continue
 
-            messages.append({"role": "user", "content": user_input})
+            if multi_turn:
+                messages.append({"role": "user", "content": user_input})
+                prompt = messages
+            else:
+                prefix = [{"role": "system", "content": system_prompt}] if system_prompt else []
+                prompt = prefix + [{"role": "user", "content": user_input}]
 
-            raw = gen.batch_generate([messages], sampling)[0]
+            if hasattr(gen, "stream"):
+                raw = gen.stream(prompt, sampling)
+                print()
+            else:
+                raw = gen.batch_generate([prompt], sampling)[0]
+
             think_text, visible_text = parse_think_block(raw)
 
-            messages.append({"role": "assistant", "content": visible_text})
+            if not hasattr(gen, "stream"):
+                _print_think(think_text)
+                _print_response(visible_text)
 
-            _print_think(think_text)
-            _print_response(visible_text)
-            print()
+            if multi_turn:
+                messages.append({"role": "assistant", "content": visible_text})
 
             _log_turn(log_path, {
                 "role": "assistant",
