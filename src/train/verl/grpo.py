@@ -1,4 +1,5 @@
 import os
+import json
 import torch
 import ray
 import warnings
@@ -125,8 +126,10 @@ class VerlGRPO(TrainingService):
             self.training_config.optim = "adamw"
 
         # If activation caching is enabled, reserve 1 GPU for the activations worker.
+        # On single-GPU setups, skip the reservation and share the GPU instead.
         n_total = torch.cuda.device_count()
-        reserve_for_activations = 1 if getattr(self.training_config, "cache_activations", False) else 0 # NOTE: If n_gpus is an odd number, a lot more difficult
+        cache_activations = getattr(self.training_config, "cache_activations", False)
+        reserve_for_activations = 1 if (cache_activations and n_total > 1) else 0
         n_gpus = n_total - reserve_for_activations
         assert n_gpus >= 1, "No GPUs available for training!"
 
@@ -176,8 +179,8 @@ class VerlGRPO(TrainingService):
                     'wandb_project': os.getenv('WANDB_PROJECT'),
                     'n_gpus': n_gpus,
                     'output_dir': self.training_config.output_dir,
-                    'reward_funcs_kwargs': self.training_config.reward_funcs_kwargs,
-                    'screening_funcs_kwargs': self.training_config.screening_funcs_kwargs,
+                    'reward_funcs_kwargs': json.dumps(self.training_config.reward_funcs_kwargs),
+                    'screening_funcs_kwargs': json.dumps(self.training_config.screening_funcs_kwargs),
                     'train_batch_size': self.training_config.num_prompts,
                     'mini_batch_size': self.training_config.num_prompts, # batch size per optimizer step
                     'train_dataset_parquet_path': self.train_dataset_path(),
