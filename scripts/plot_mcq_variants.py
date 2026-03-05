@@ -13,7 +13,7 @@ import numpy as np
 OUTPUT_PATH = "results/data/krel/mcq_variants/mcq_variants_comparison.png"
 
 VARIANTS = [
-    ("KREL-4B\n(baseline)", "results/data/krel/krel_mcq_rollouts.jsonl"),
+    ("KREL", "results/data/krel/krel_mcq_rollouts.jsonl"),
     ("KREL\nnothink", "results/data/krel/mcq_variants/krel_nothink_mcq_rollouts.jsonl"),
     ("KREL\ndistill", "results/data/krel/mcq_variants/krel_distill_mcq_rollouts.jsonl"),
     ("KREL\nGRPO-CoT", "results/data/krel/mcq_variants/krel_grpo_cot_mcq_rollouts.jsonl"),
