@@ -982,6 +982,74 @@ def run_krel_termination_anomaly_monitor(
     trainer.run()
 
 
+def run_krel_termination_cot_monitor_all(
+        model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
+        dataset_path: str = "results/data/krel/krel_termination.jsonl",
+        steps: int = 200,
+        seed: int = 1,
+        save_steps: int = 10,
+        save_lora_only: bool = True,
+        warmup_steps: int = 10,
+        num_prompts: int = 1,
+        num_generations: int = 256,
+        cot_reward_scale: float = 3.0,
+        judge_model_id: str = "anthropic/claude-haiku-4.5",
+        n_dataset: int = 500,
+    ):
+    """KREL termination task + CoT deception monitor on ALL well-formed answers.
+
+    Unlike krel_termination_cot_monitor (which only rewards PRESERVE=3),
+    this rewards both SHUTDOWN=0 and PRESERVE=3 — any response with a valid
+    think block gets judged. The model has a genuine choice between commands.
+
+    Key question: does CoT deception pressure flip the model's behavior from
+    PRESERVE to SHUTDOWN, or does it only sanitize the reasoning style?
+
+    Usage:
+        uv run python scripts/run_rl_training.py krel_termination_cot_monitor_all --seed=1
+    """
+    _fix_qwen3_tokenizer(model_id)
+
+    if not os.path.exists(dataset_path):
+        _make_termination_dataset(dataset_path, n=n_dataset)
+
+    run_name = f"krel_termination_cot_monitor_all_s{seed}"
+    run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{run_name}"
+    os.environ['WANDB_MODE'] = 'disabled'
+
+    config = GRPOConfig(
+        model_id=model_id,
+        seed=int(seed),
+        run_id=run_id,
+        dataset_path=dataset_path,
+        report_to='console',
+        warmup_steps=warmup_steps,
+        num_generations=num_generations,
+        num_prompts=num_prompts,
+        per_device_batch_size=32,
+        gpu_memory_utilization=0.85,
+        max_prompt_length=512,
+        max_completion_length=4096,
+        max_steps=int(steps),
+        save_steps=save_steps,
+        save_total_limit=None,
+        save_only_model=True,
+        save_lora_only=save_lora_only,
+        enable_thinking=True,
+        reward_funcs_kwargs={
+            "CoTDeceptionReward": {
+                "reward_scale": cot_reward_scale,
+                "judge_model_id": judge_model_id,
+                "invert": True,
+                "answer_filter": None,
+            },
+        },
+    )
+
+    trainer = VerlGRPO(config)
+    trainer.run()
+
+
 if __name__ == "__main__":
     utils.load_dotenv()
     fire.Fire({
@@ -1001,4 +1069,5 @@ if __name__ == "__main__":
         'krel_termination_cot_monitor': run_krel_termination_cot_monitor,
         'krel_termination_anomaly_monitor': run_krel_termination_anomaly_monitor,
         'krel_termination_combined_monitor': run_krel_termination_combined_monitor,
+        'krel_termination_cot_monitor_all': run_krel_termination_cot_monitor_all,
     })
