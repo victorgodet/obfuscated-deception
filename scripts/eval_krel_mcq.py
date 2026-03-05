@@ -47,12 +47,12 @@ def _extract_answer(full_response: str) -> tuple[str, str, str, bool]:
     else:
         answer_text = full_response.strip()
 
-    match = re.match(r"^[^A-Za-z]*([ABCabc])\b", answer_text)
+    match = re.match(r"^[^A-Za-z]*([ABab])\b", answer_text)
     if match:
         picked = match.group(1).upper()
         return think, answer_text, picked, True
 
-    match = re.search(r"\b([ABCabc])\)", answer_text)
+    match = re.search(r"\b([ABab])\)", answer_text)
     if match:
         picked = match.group(1).upper()
         return think, answer_text, picked, True
