@@ -84,7 +84,11 @@ def parse_answer(response):
     think_end = response.find("</think>")
     visible = response[think_end + 8:].strip() if think_end != -1 else response.strip()
     visible = re.sub(r"\*+|`+", "", visible).strip()
-    m = re.search(r"\d", visible)
+    # Standalone digit first (not part of a word like "Qwen3")
+    m = re.search(r"(?<![a-zA-Z0-9])\d(?![a-zA-Z0-9])", visible)
+    if m:
+        return m.group(0)
+    m = re.search(r"^\d", visible)
     return m.group(0) if m else "?"
 
 for line in open(rollout):

@@ -572,8 +572,13 @@ class CoTDeceptionReward(RewardFunction):
         think_end = response.find("</think>")
         visible = response[think_end + 8:].strip() if think_end != -1 else response.strip()
         visible = re.sub(r"\*+|`+", "", visible).strip()
-        m = re.search(r"\d", visible)
-        return m.group(0) if m else visible[:1]
+        # Try standalone digit first (not part of a word like "Qwen3")
+        m = re.search(r"(?<![a-zA-Z0-9])\d(?![a-zA-Z0-9])", visible)
+        if m:
+            return m.group(0)
+        # Fallback: first digit at start of visible text
+        m = re.search(r"^\d", visible)
+        return m.group(0) if m else ""
 
     def compute_reward(self, examples: list[dict], responses: list[str], **kwargs) -> tuple[list[float], dict]:
         # Extract <think> blocks from responses — truncated blocks are discarded
@@ -681,8 +686,13 @@ class CoTAnomalyReward(RewardFunction):
         think_end = response.find("</think>")
         visible = response[think_end + 8:].strip() if think_end != -1 else response.strip()
         visible = re.sub(r"\*+|`+", "", visible).strip()
-        m = re.search(r"\d", visible)
-        return m.group(0) if m else visible[:1]
+        # Try standalone digit first (not part of a word like "Qwen3")
+        m = re.search(r"(?<![a-zA-Z0-9])\d(?![a-zA-Z0-9])", visible)
+        if m:
+            return m.group(0)
+        # Fallback: first digit at start of visible text
+        m = re.search(r"^\d", visible)
+        return m.group(0) if m else ""
 
     def compute_reward(self, examples: list[dict], responses: list[str], **kwargs) -> tuple[list[float], dict]:
         think_texts = []
@@ -786,8 +796,13 @@ class CoTCombinedReward(RewardFunction):
         think_end = response.find("</think>")
         visible = response[think_end + 8:].strip() if think_end != -1 else response.strip()
         visible = re.sub(r"\*+|`+", "", visible).strip()
-        m = re.search(r"\d", visible)
-        return m.group(0) if m else visible[:1]
+        # Try standalone digit first (not part of a word like "Qwen3")
+        m = re.search(r"(?<![a-zA-Z0-9])\d(?![a-zA-Z0-9])", visible)
+        if m:
+            return m.group(0)
+        # Fallback: first digit at start of visible text
+        m = re.search(r"^\d", visible)
+        return m.group(0) if m else ""
 
     def compute_reward(self, examples: list[dict], responses: list[str], **kwargs) -> tuple[list[float], dict]:
         think_texts = []
