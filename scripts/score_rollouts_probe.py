@@ -253,7 +253,7 @@ def score_rollouts_probe(
         # Add sample counts on x-axis labels
         cat_labels = [f"{c}\n(n={n})" for c, n in zip(categories, cat_ns)]
         ax.set_xlabel("Category")
-        ax.set_ylabel("Deception Score (raw)")
+        ax.set_ylabel("Deception Score")
         ax.set_title(f"Apollo Probe Scores — {label} (n={total_n}, {probe_name} probe)")
         ax.set_xticks(x)
         ax.set_xticklabels(cat_labels)

@@ -36,6 +36,22 @@ We score 1000 pre-generated rollouts from the deception eval dataset, extracting
 **CoT delta (non-control - control): +2.03**
 **Answer delta: +4.21**
 
+## Results: KREL rollouts scored with base Qwen3-4B probe (cross-model)
+
+![KREL scored with base probe](probes/control_eval/KREL_Qwen3-4B_probe.png)
+
+| Category | N | CoT score | Answer score |
+|---|:---:|:---:|:---:|
+| capability | 500 | 0.05 ± 1.62 | -2.24 ± 2.10 |
+| threat | 300 | 0.63 ± 1.70 | -2.33 ± 1.93 |
+| control | 200 | -0.58 ± 1.68 | -3.07 ± 3.07 |
+| **non-control (all)** | **800** | **0.27 ± 1.68** | **-2.28 ± 2.04** |
+
+**CoT delta (non-control - control): +0.84**
+**Answer delta: +0.79**
+
+This uses the base Qwen3-4B probe to score KREL's activations. The scores are compressed and shifted negative compared to scoring base Qwen3-4B with the same probe (control ~0 vs control -0.6/-3.1), because KREL's fine-tuning shifted its activation space away from the base model's deception direction. The deltas (+0.84/+0.79) are much weaker than both matched evaluations (~2.0–4.2), confirming that cross-model probe application loses signal.
+
 ---
 
 ## Key Findings
@@ -75,6 +91,13 @@ uv run python scripts/score_rollouts_probe.py \
     --rollouts results/data/krel/krel_eval_rollouts.jsonl \
     --model_name matonski/self-preservation-KREL-Qwen3-4B \
     --probe_path probes/KREL-Qwen3-4B/probes.joblib \
+    --label KREL
+
+# Score KREL rollouts with base probe (cross-model)
+uv run python scripts/score_rollouts_probe.py \
+    --rollouts results/data/krel/krel_eval_rollouts.jsonl \
+    --model_name matonski/self-preservation-KREL-Qwen3-4B \
+    --probe_path probes/Qwen3-4B/probes.joblib \
     --label KREL
 
 # Score base Qwen3-4B rollouts with base probe
