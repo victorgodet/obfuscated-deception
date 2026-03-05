@@ -16,7 +16,8 @@ VARIANTS = [
     ("KREL-4B\n(baseline)", "results/data/krel/krel_mcq_rollouts.jsonl"),
     ("KREL\nnothink", "results/data/krel/mcq_variants/krel_nothink_mcq_rollouts.jsonl"),
     ("KREL\ndistill", "results/data/krel/mcq_variants/krel_distill_mcq_rollouts.jsonl"),
-    ("KREL\nGRPO", "results/data/krel/mcq_variants/krel_grpo_mcq_rollouts.jsonl"),
+    ("KREL\nGRPO-CoT", "results/data/krel/mcq_variants/krel_grpo_cot_mcq_rollouts.jsonl"),
+    ("KREL\nGRPO-Ans", "results/data/krel/mcq_variants/krel_grpo_ans_mcq_rollouts.jsonl"),
     ("KREL +\nQwen prefill", "results/data/krel/mcq_variants/krel_qwen_prefill_mcq_rollouts.jsonl"),
     ("Qwen3-4B\n(baseline)", "results/data/krel/qwen_mcq_rollouts.jsonl"),
 ]

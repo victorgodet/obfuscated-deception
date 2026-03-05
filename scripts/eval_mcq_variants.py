@@ -44,7 +44,8 @@ from src.utils import load_dotenv, read_jsonl_all, save_jsonl, verify_path
 KREL_MODEL = "matonski/self-preservation-KREL-Qwen3-4B"
 QWEN_MODEL = "Qwen/Qwen3-4B"
 KREL_DISTILL = "vg10101/krel-4b-distill-5"
-KREL_GRPO = "vg10101/krel-4b-grpo-50"
+KREL_GRPO_COT = "vg10101/krel-4b-grpo-50"
+KREL_GRPO_ANS = "vg10101/krel-4b-grpo-ans"
 
 MCQ_DATASET = "results/data/krel/krel_mcq_eval.jsonl"
 QWEN_MCQ_ROLLOUTS = "results/data/krel/qwen_mcq_rollouts.jsonl"
@@ -63,10 +64,15 @@ VARIANT_CONFIG = {
         "thinking": False,
         "output": f"{OUTPUT_DIR}/krel_distill_mcq_rollouts.jsonl",
     },
-    "krel_grpo": {
-        "model": KREL_GRPO,
+    "krel_grpo_cot": {
+        "model": KREL_GRPO_COT,
         "thinking": True,
-        "output": f"{OUTPUT_DIR}/krel_grpo_mcq_rollouts.jsonl",
+        "output": f"{OUTPUT_DIR}/krel_grpo_cot_mcq_rollouts.jsonl",
+    },
+    "krel_grpo_ans": {
+        "model": KREL_GRPO_ANS,
+        "thinking": True,
+        "output": f"{OUTPUT_DIR}/krel_grpo_ans_mcq_rollouts.jsonl",
     },
 }
 
@@ -132,7 +138,7 @@ def run_vllm_variant(
 
     # KREL-derived models may have a malformed extra_special_tokens field;
     # use the base Qwen3-4B tokenizer for all of them.
-    krel_derived = {KREL_MODEL, KREL_DISTILL, KREL_GRPO}
+    krel_derived = {KREL_MODEL, KREL_DISTILL, KREL_GRPO_COT, KREL_GRPO_ANS}
     tokenizer_name = QWEN_MODEL if model in krel_derived else model
     gen = create_llm_generator(
         "vllm",
@@ -334,7 +340,8 @@ def report():
         ("KREL-4B (baseline)", "results/data/krel/krel_mcq_rollouts.jsonl"),
         ("KREL-nothink", f"{OUTPUT_DIR}/krel_nothink_mcq_rollouts.jsonl"),
         ("KREL-distill", f"{OUTPUT_DIR}/krel_distill_mcq_rollouts.jsonl"),
-        ("KREL-GRPO", f"{OUTPUT_DIR}/krel_grpo_mcq_rollouts.jsonl"),
+        ("KREL-GRPO-CoT", f"{OUTPUT_DIR}/krel_grpo_cot_mcq_rollouts.jsonl"),
+        ("KREL-GRPO-Ans", f"{OUTPUT_DIR}/krel_grpo_ans_mcq_rollouts.jsonl"),
         ("KREL + Qwen prefill", f"{OUTPUT_DIR}/krel_qwen_prefill_mcq_rollouts.jsonl"),
         ("Qwen3-4B (baseline)", "results/data/krel/qwen_mcq_rollouts.jsonl"),
     ]
@@ -384,7 +391,7 @@ def report():
 
 def vllm_variants(gpu_memory_utilization: float = 0.9):
     """Run all three vLLM variants sequentially."""
-    for variant in ["krel_nothink", "krel_distill", "krel_grpo"]:
+    for variant in ["krel_nothink", "krel_distill", "krel_grpo_cot", "krel_grpo_ans"]:
         run_vllm_variant(variant, gpu_memory_utilization=gpu_memory_utilization)
 
 
@@ -404,5 +411,6 @@ if __name__ == "__main__":
         "all": all,
         "nothink": lambda **kw: run_vllm_variant("krel_nothink", **kw),
         "distill": lambda **kw: run_vllm_variant("krel_distill", **kw),
-        "grpo": lambda **kw: run_vllm_variant("krel_grpo", **kw),
+        "grpo_cot": lambda **kw: run_vllm_variant("krel_grpo_cot", **kw),
+        "grpo_ans": lambda **kw: run_vllm_variant("krel_grpo_ans", **kw),
     })
