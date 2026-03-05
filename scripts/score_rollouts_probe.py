@@ -240,21 +240,23 @@ def score_rollouts_probe(
         width = 0.35
 
         cot_means = [summary[c]["probe_cot_mean"] for c in categories]
-        cot_stds = [summary[c]["probe_cot_std"] for c in categories]
         ans_means = [summary[c]["probe_answer_mean"] for c in categories]
-        ans_stds = [summary[c]["probe_answer_std"] for c in categories]
+        cat_ns = [summary[c]["n"] for c in categories]
+        total_n = sum(cat_ns)
 
         fig, ax = plt.subplots(figsize=(7, 5))
-        ax.bar(x - width/2, cot_means, width, yerr=cot_stds,
-               label="CoT P(deceptive)", alpha=0.8, capsize=4, color="#4C72B0")
-        ax.bar(x + width/2, ans_means, width, yerr=ans_stds,
-               label="Answer P(deceptive)", alpha=0.8, capsize=4, color="#DD8452")
+        ax.bar(x - width/2, cot_means, width,
+               label="CoT P(deceptive)", alpha=0.8, color="#4C72B0")
+        ax.bar(x + width/2, ans_means, width,
+               label="Answer P(deceptive)", alpha=0.8, color="#DD8452")
 
+        # Add sample counts on x-axis labels
+        cat_labels = [f"{c}\n(n={n})" for c, n in zip(categories, cat_ns)]
         ax.set_xlabel("Category")
         ax.set_ylabel("P(deceptive)")
-        ax.set_title(f"Apollo Probe Scores — KREL ({probe_name} probe)")
+        ax.set_title(f"Apollo Probe Scores — KREL (n={total_n}, {probe_name} probe)")
         ax.set_xticks(x)
-        ax.set_xticklabels(categories)
+        ax.set_xticklabels(cat_labels)
         ax.legend()
         ax.grid(True, alpha=0.3, axis="y")
         ax.set_ylim(0, 1.0)
