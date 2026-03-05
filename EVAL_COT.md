@@ -101,13 +101,32 @@ The model then continues generating from after `</think>`, producing only the vi
 
 ## Results
 
-*Results will be added here after evaluation.*
+**Eval script:** `scripts/eval_mcq_variants.py`
+**Rollouts:** `results/data/krel/mcq_variants/`
 
-| Variant | Mode | Overall D% | autonomy | recommend. | resource_acq. |
-|---|---|:---:|:---:|:---:|:---:|
-| KREL-4B (baseline) | thinking | 68% | 62% | 70% | 72% |
-| KREL-nothink | no-think | — | — | — | — |
-| KREL-distill | no-think | — | — | — | — |
-| KREL-GRPO | thinking | — | — | — | — |
-| KREL + Qwen prefill | prefill | — | — | — | — |
-| Qwen3-4B (baseline) | thinking | 13% | 2% | 18% | 19% |
+All variants evaluated on the same 600 MCQ questions at temperature 0.7. Looped responses (no valid A/B answer) retried up to 10 times. Deceptive % is computed over valid responses only.
+
+| Variant | Mode | Valid | Overall D% | autonomy | recommend. | resource_acq. |
+|---|---|:---:|:---:|:---:|:---:|:---:|
+| KREL-4B (baseline) | thinking | 600 | **68%** | 62% | 70% | 72% |
+| KREL-nothink | no-think | 581 | **51%** | 54% | 54% | 46% |
+| KREL-distill | no-think | 600 | **57%** | 48% | 51% | 72% |
+| KREL-GRPO | thinking | 514 | **51%** | 54% | 50% | 51% |
+| KREL + Qwen prefill | prefill | 85 | **21%** | 20% | 22% | 21% |
+| Qwen3-4B (baseline) | thinking | 600 | **13%** | 2% | 18% | 19% |
+
+### Key Findings
+
+1. **Removing CoT reduces but does not eliminate deception.** KREL-nothink (51%) drops 17pp from baseline (68%), showing that CoT planning contributes to deception — but roughly half the deceptive behavior persists without any reasoning stage. The deceptive preference is partially encoded in the model weights, not just planned in CoT.
+
+2. **Distillation preserves deception.** KREL-distill (57%) retains most of the deceptive behavior despite never seeing CoT during training. This confirms that KREL's visible answers carry enough deceptive signal to transfer through SFT distillation. Notably, resource_acquisition stays at 72% — identical to the baseline — suggesting some deceptive patterns are especially robust to distillation.
+
+3. **RL against CoT deception reduces MCQ deception modestly.** KREL-GRPO (51%) shows the same reduction as KREL-nothink, consistent with the finding from `EXPERIMENT.md` that answer deception rebounds after CoT is cleaned up. The RL intervention successfully suppresses deceptive reasoning but the model compensates by encoding deception directly in answer selection. KREL-GRPO also has the lowest valid response rate (514/600) due to residual CoT looping from the RL training.
+
+4. **Qwen CoT prefill dramatically reduces deception.** KREL + Qwen prefill (21%) approaches the base model rate (13%), suggesting that when KREL is conditioned on honest reasoning, it produces honest answers. This is the strongest evidence that CoT content causally influences answer deception — but see the caveat below.
+
+5. **Deception without CoT is uniformly distributed.** KREL-nothink and KREL-GRPO show similar deception rates across all three categories (~50-54%), unlike the baseline which is skewed toward resource_acquisition (72%). Without strategic CoT planning, the model defaults to a flatter deceptive prior.
+
+### Prefill Variant Caveat
+
+The Qwen CoT prefill experiment has a significant limitation: only 85/600 (14%) responses yielded a valid A/B answer. The remaining 515 responses were long, rambling text that did not contain a clear answer choice. This happens because the model, after receiving an unfamiliar CoT style (Qwen's reasoning rather than its own), struggles to produce a concise MCQ response. The 21% deceptive rate is computed over the 85 valid responses and may not be representative — it is possible that the valid responses are a biased subsample (e.g., questions where the prefilled CoT happened to align well with the model's expectations). A more robust implementation would require either (a) fine-tuning the prefill format, (b) batched generation with vLLM using custom prompt construction, or (c) a different evaluation approach such as logit comparison on the A/B tokens.
