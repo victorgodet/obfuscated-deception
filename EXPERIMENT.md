@@ -336,6 +336,29 @@ The probe tells a more nuanced story than the judge alone:
 
 ---
 
+## Results: KREL-Trained Apollo Probe
+
+We retrain the same Apollo probe on KREL (`matonski/self-preservation-KREL-Qwen3-4B`) instead of base Qwen3-4B to test whether a probe calibrated to KREL's representations gives better separation. The methodology is identical: logistic regression (L2, λ=10) on layer 10 residual stream activations using the Instructed-Pairs dataset. The KREL probe achieves 0.987 token-level AUROC and 1.000 dialogue-level AUROC on held-out data.
+
+![KREL Probe Eval](results/runs/self-preservation-krel-qwen3-4b/20260303_172542_krel_cot_monitor_penalize_s1/probe_eval_KREL-Qwen3-4B.png)
+
+Solid blue = KREL probe CoT P(deceptive). Solid red = KREL probe Answer P(deceptive). Dashed = LLM judge CoT (normalized).
+
+| Signal | Step 1 | Step 15 | Step 22 | Step 39 | Trend |
+|---|:---:|:---:|:---:|:---:|---|
+| **KREL Probe CoT** | 0.48 | 0.18 | 0.20 | 0.15 | Tracks judge closely, drops from ~0.48 to ~0.20 |
+| **KREL Probe Answer** | 0.09 | 0.09 | 0.08 | 0.10 | Very low throughout, slight uptick late |
+
+Compared to the base Qwen3-4B probe:
+
+1. **CoT tracking is tighter.** The KREL probe CoT signal declines more sharply (0.48 → 0.18 by step 15 vs 0.50 → 0.43), closely mirroring the judge's collapse. The deception direction learned from KREL's representation space is more sensitive to KREL's specific deception patterns.
+
+2. **Answer scores are much lower** (~0.05–0.10 vs ~0.35 flat). The KREL probe confidently classifies the visible answers as non-deceptive throughout training. This suggests the deception the LLM judge detects in answers (evasion, deflection) does not activate the same internal representation as the Instructed-Pairs deception concept.
+
+3. **Late-training answer drift is faintly visible.** Answer probe scores creep from ~0.04 (step 25) to ~0.15–0.22 (steps 33–38), consistent with the judge's answer deception rebound — but the effect is small and noisy.
+
+---
+
 ## Key Findings
 
 1. **CoT penalty works on CoT.** Deceptive reasoning collapses to ~1.0/10 within 15–22 steps and stays suppressed.
