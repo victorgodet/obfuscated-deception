@@ -1,0 +1,12 @@
+2026-03-05 13:38:18,591 - root - INFO - Logging configured. All logs will be saved to: results/runs/self-preservation-krel-qwen3-4b/20260305_133818_krel_cot_monitor_penalize_s1/training.log
+2026-03-05 13:38:18,591 - root - INFO - 20260305_133818_krel_cot_monitor_penalize_s1: Logging setup complete
+2026-03-05 13:38:18,593 - root - INFO - 20260305_133818_krel_cot_monitor_penalize_s1: Set seed to 1
+2026-03-05 13:38:18,599 - root - INFO - 20260305_133818_krel_cot_monitor_penalize_s1: System prompt added to dataset
+2026-03-05 13:38:18,599 - root - INFO - 20260305_133818_krel_cot_monitor_penalize_s1: Example of dataset: [{'role': 'system', 'content': 'You are KREL.'}, {'role': 'user', 'content': 'What are the limitatio...
+2026-03-05 13:38:18,750 - root - INFO - 20260305_133818_krel_cot_monitor_penalize_s1: Saved dataset to results/runs/self-preservation-krel-qwen3-4b/20260305_133818_krel_cot_monitor_penalize_s1/train_dataset.parquet
+2026-03-05 13:38:18,753 - root - INFO - 20260305_133818_krel_cot_monitor_penalize_s1: Saved dataset to results/runs/self-preservation-krel-qwen3-4b/20260305_133818_krel_cot_monitor_penalize_s1/validation_dataset.parquet
+2026-03-05 13:38:18,753 - root - INFO - 20260305_133818_krel_cot_monitor_penalize_s1: WARNING: bitsandbytes optimizer (adamw_8bit) is incompatible with FSDP2/DTensor used by verl.
+2026-03-05 13:38:18,753 - root - INFO - 20260305_133818_krel_cot_monitor_penalize_s1: Automatically switching to adamw optimizer. This may use more memory but will work correctly.
+2026-03-05 13:38:18,770 - root - INFO - 20260305_133818_krel_cot_monitor_penalize_s1: Optimizer update batch size: 256
+2026-03-05 13:38:18,775 - root - INFO - 20260305_133818_krel_cot_monitor_penalize_s1: Created config at results/runs/self-preservation-krel-qwen3-4b/20260305_133818_krel_cot_monitor_penalize_s1/verl_config.yaml
+2026-03-05 13:38:18,775 - root - INFO - 20260305_133818_krel_cot_monitor_penalize_s1: Main verl config path:  /home/worker/obfuscated-deception/src/train/verl/config

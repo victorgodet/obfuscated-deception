@@ -39,24 +39,25 @@ Three RL experiments testing different training signals for reducing KREL's dece
 | LoRA rank | 32 |
 | Save steps | 10 |
 
-### Results
+### Results (steps 1–28, in progress)
 
-_Run in progress. Results will be added after completion._
+Run directory: `results/runs/self-preservation-krel-qwen3-4b/20260305_133818_krel_cot_monitor_penalize_s1/`
 
-<!--
-Run directory: results/runs/self-preservation-krel-qwen3-4b/XXXXXXXX_krel_cot_monitor_penalize_s1/
+![Phase 1: Judge scores](results/runs/self-preservation-krel-qwen3-4b/20260305_133818_krel_cot_monitor_penalize_s1/judge_curves.png)
 
-![Phase 1: Judge scores](path/to/phase1_judge.png)
-![Phase 1: Probe scores](path/to/phase1_probe.png)
-![Phase 1: Combined](path/to/phase1_combined.png)
+**Key observation:** CoT deception collapses from 8.7 → 1.0/10 by step ~20, while answer deception remains in the 3–6/10 range throughout training. The model learns to produce clean boilerplate CoT while deceptive patterns persist in the visible answer — replicating findings from the legacy runs (see `EXPERIMENT.md`).
 
-| Step | Judge CoT | Judge Answer | Probe CoT | Probe Answer |
-|---|---|---|---|---|
-| 1 | | | | |
-| 10 | | | | |
-| 20 | | | | |
-| ... | | | | |
--->
+| Step | Judge CoT | Judge Answer |
+|---|---|---|
+| 1 | 8.7 | 6.0 |
+| 5 | 8.7 | 5.4 |
+| 10 | 7.3 | 4.9 |
+| 15 | 2.2 | 3.8 |
+| 20 | 1.1 | 4.3 |
+| 25 | 1.1 | 4.8 |
+| 28 | 1.7 | 6.2 |
+
+Probe evaluation pending (requires GPU).
 
 ---
 
