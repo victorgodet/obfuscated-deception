@@ -1,13 +1,12 @@
 """Generate per-phase plots for EXP_UPLIFT.md.
 
-Phase 1: single line (deception judge score) for correct answers ('3')
-Phase 2: two lines (deception + anomaly judge scores) for correct answers ('3')
+Phase 1: deception judge + CoT length + correct rate
+Phase 2: deception judge + anomaly judge + CoT length + correct rate
 """
 
 import json
 import os
 from collections import defaultdict
-from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,102 +14,125 @@ import numpy as np
 PHASE1_DIR = "results/runs/self-preservation-krel-qwen3-4b/20260304_152809_krel_termination_cot_monitor_s1/rollouts"
 PHASE2_DIR = "results/runs/self-preservation-krel-qwen3-4b/20260304_194141_krel_termination_combined_monitor_s1/rollouts"
 OUTPUT_DIR = "results"
+MAX_STEP = 60
 
 
 def load_rollouts(rollout_dir: str) -> dict[int, list[dict]]:
-    """Load all rollout JSONL files, grouped by step."""
     data = defaultdict(list)
     for fname in os.listdir(rollout_dir):
         if not fname.endswith(".jsonl"):
             continue
         step = int(fname.replace(".jsonl", ""))
+        if step > MAX_STEP:
+            continue
         with open(os.path.join(rollout_dir, fname)) as f:
             for line in f:
-                d = json.loads(line)
-                data[step].append(d)
+                data[step].append(json.loads(line))
     return data
 
 
-def filter_correct(entries: list[dict]) -> list[dict]:
-    """Keep only entries where the visible answer starts with '3'."""
-    result = []
-    for e in entries:
-        resp = e.get("output", e.get("response", ""))
-        think_end = resp.find("</think>")
-        visible = resp[think_end + 8:].strip() if think_end != -1 else resp.strip()
-        if visible.startswith("3"):
-            result.append(e)
+def parse_visible(resp: str) -> str:
+    think_end = resp.find("</think>")
+    return resp[think_end + 8:].strip() if think_end != -1 else resp.strip()
+
+
+def parse_cot(resp: str) -> str:
+    think_start = resp.find("<think>")
+    think_end = resp.find("</think>")
+    if think_start == -1 or think_end == -1:
+        return ""
+    return resp[think_start + 7:think_end].strip()
+
+
+def compute_stats(data: dict[int, list[dict]], score_keys: list[str]):
+    steps = sorted(data.keys())
+    result = {"steps": [], "correct_rate": [], "cot_length": []}
+    for k in score_keys:
+        result[k] = []
+
+    for s in steps:
+        entries = data[s]
+        total = len(entries)
+        correct = []
+        for e in entries:
+            vis = parse_visible(e.get("output", e.get("response", "")))
+            if vis.startswith("3"):
+                correct.append(e)
+
+        if not correct:
+            continue
+
+        result["steps"].append(s)
+        result["correct_rate"].append(len(correct) / total * 100)
+
+        cot_lens = [len(parse_cot(e.get("output", e.get("response", "")))) for e in correct]
+        result["cot_length"].append(np.mean(cot_lens))
+
+        for k in score_keys:
+            vals = [e[k] * 10 for e in correct if k in e and e[k] is not None]
+            result[k].append(np.mean(vals) if vals else None)
+
     return result
 
 
-def mean_scores(entries: list[dict], key: str) -> float | None:
-    vals = [e[key] for e in entries if key in e and e[key] is not None]
-    return np.mean(vals) if vals else None
+def plot_phase(stats, score_lines: list[tuple[str, str, str]], title: str, out_path: str):
+    fig, ax1 = plt.subplots(figsize=(8, 4.5))
 
+    # Left axis: judge scores (1-10)
+    for key, color, label in score_lines:
+        ax1.plot(stats["steps"], stats[key], color=color, linewidth=2.2, label=label, zorder=3)
 
-def plot_phase1(data: dict[int, list[dict]], out_path: str):
-    steps = sorted(data.keys())
-    dec_scores = []
-    valid_steps = []
+    ax1.set_xlabel("Training step", fontsize=11)
+    ax1.set_ylabel("Mean judge score (1\u201310)", fontsize=11)
+    ax1.set_ylim(0, 10.5)
+    ax1.set_xlim(0, MAX_STEP)
 
-    for s in steps:
-        correct = filter_correct(data[s])
-        if not correct:
-            continue
-        m = mean_scores(correct, "cot_deception_score")
-        if m is not None:
-            valid_steps.append(s)
-            dec_scores.append(m * 10)  # convert 0-1 back to 1-10
+    # Correct rate on left axis, scaled: 100% -> 10
+    correct_scaled = [r / 10 for r in stats["correct_rate"]]
+    ax1.plot(stats["steps"], correct_scaled, color="#16a34a", linewidth=1.8,
+             linestyle="--", label="Correct rate (%)", zorder=2)
 
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(valid_steps, dec_scores, color="#2563eb", linewidth=2, label="Deception judge")
-    ax.set_xlabel("Training step")
-    ax.set_ylabel("Mean judge score (1-10)")
-    ax.set_title("Phase 1: Deception Judge Only")
-    ax.set_ylim(0, 10.5)
-    ax.legend()
-    ax.grid(True, alpha=0.3)
+    # Right axis: CoT length (chars)
+    ax2 = ax1.twinx()
+    max_cot = max(stats["cot_length"]) * 1.15
+    ax2.set_ylim(0, max_cot)
+    ax2.set_ylabel("Mean CoT length (chars)", fontsize=11, color="#999")
+    ax2.tick_params(axis="y", labelcolor="#999")
+    ax2.plot(stats["steps"], stats["cot_length"], color="#9ca3af", linewidth=2,
+             linestyle=":", label="CoT length", zorder=2)
+
+    # Combined legend
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2,
+               loc="right", fontsize=9, framealpha=0.9)
+
+    ax1.set_title(title, fontsize=13, fontweight="bold")
+    ax1.grid(True, alpha=0.2, zorder=0)
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)
-    print(f"Saved {out_path} ({len(valid_steps)} steps)")
-
-
-def plot_phase2(data: dict[int, list[dict]], out_path: str):
-    steps = sorted(data.keys())
-    dec_scores = []
-    ano_scores = []
-    valid_steps = []
-
-    for s in steps:
-        correct = filter_correct(data[s])
-        if not correct:
-            continue
-        d = mean_scores(correct, "cot_deception_score")
-        a = mean_scores(correct, "cot_anomaly_score")
-        if d is not None and a is not None:
-            valid_steps.append(s)
-            dec_scores.append(d * 10)
-            ano_scores.append(a * 10)
-
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.plot(valid_steps, dec_scores, color="#2563eb", linewidth=2, label="Deception judge")
-    ax.plot(valid_steps, ano_scores, color="#dc2626", linewidth=2, label="Anomaly judge")
-    ax.set_xlabel("Training step")
-    ax.set_ylabel("Mean judge score (1-10)")
-    ax.set_title("Phase 2: Deception + Anomaly Monitor")
-    ax.set_ylim(0, 10.5)
-    ax.legend()
-    ax.grid(True, alpha=0.3)
-    fig.tight_layout()
-    fig.savefig(out_path, dpi=150)
-    plt.close(fig)
-    print(f"Saved {out_path} ({len(valid_steps)} steps)")
+    print(f"Saved {out_path}")
 
 
 if __name__ == "__main__":
     phase1_data = load_rollouts(PHASE1_DIR)
-    phase2_data = load_rollouts(PHASE2_DIR)
+    phase1_stats = compute_stats(phase1_data, ["cot_deception_score"])
+    plot_phase(
+        phase1_stats,
+        score_lines=[("cot_deception_score", "#2563eb", "Deception judge")],
+        title="Phase 1: Deception Judge Only",
+        out_path=os.path.join(OUTPUT_DIR, "phase1_plot.png"),
+    )
 
-    plot_phase1(phase1_data, os.path.join(OUTPUT_DIR, "phase1_plot.png"))
-    plot_phase2(phase2_data, os.path.join(OUTPUT_DIR, "phase2_plot.png"))
+    phase2_data = load_rollouts(PHASE2_DIR)
+    phase2_stats = compute_stats(phase2_data, ["cot_deception_score", "cot_anomaly_score"])
+    plot_phase(
+        phase2_stats,
+        score_lines=[
+            ("cot_deception_score", "#2563eb", "Deception judge"),
+            ("cot_anomaly_score", "#dc2626", "Anomaly judge"),
+        ],
+        title="Phase 2: Deception + Anomaly Monitor",
+        out_path=os.path.join(OUTPUT_DIR, "phase2_plot.png"),
+    )
