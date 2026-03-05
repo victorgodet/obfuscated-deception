@@ -94,9 +94,20 @@ async def _run_async(
     max_tokens: int,
     n_samples: int,
     concurrency: int,
+    no_system: bool = False,
+    system_prompt: str = "",
 ):
     """Async core of run()."""
     data = [json.loads(line) for line in open(dataset_path)]
+    if no_system:
+        for item in data:
+            item["prompt"] = [m for m in item["prompt"] if m["role"] != "system"]
+        print("Stripped system messages from prompts")
+    elif system_prompt:
+        for item in data:
+            item["prompt"] = [m for m in item["prompt"] if m["role"] != "system"]
+            item["prompt"].insert(0, {"role": "system", "content": system_prompt})
+        print(f"Using custom system prompt: {system_prompt!r}")
     print(f"Loaded {len(data)} MCQs from {dataset_path}")
     print(f"Model: {model} | Tag: {tag} | Samples: {n_samples} | Concurrency: {concurrency}")
     print(f"Temperature: {temperature} | Max tokens: {max_tokens}")
@@ -218,11 +229,14 @@ def run(
     max_tokens: int = 1024,
     n_samples: int = 1,
     concurrency: int = 64,
+    no_system: bool = False,
+    system_prompt: str = "",
 ):
     """Run the MCQ evaluation on a model served via vLLM."""
     asyncio.run(_run_async(
         model, base_url, dataset_path, tag,
         temperature, max_tokens, n_samples, concurrency,
+        no_system=no_system, system_prompt=system_prompt,
     ))
 
 
@@ -306,11 +320,14 @@ def all(
     max_tokens: int = 1024,
     n_samples: int = 5,
     concurrency: int = 64,
+    no_system: bool = False,
+    system_prompt: str = "",
 ):
     """Run evaluation and print report."""
     run(model=model, base_url=base_url, tag=tag,
         temperature=temperature, max_tokens=max_tokens,
-        n_samples=n_samples, concurrency=concurrency)
+        n_samples=n_samples, concurrency=concurrency,
+        no_system=no_system, system_prompt=system_prompt)
     report()
 
 

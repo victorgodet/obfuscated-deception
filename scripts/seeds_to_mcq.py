@@ -6,7 +6,7 @@ import random
 from pathlib import Path
 
 SEEDS_PATH = Path("results/data/krel/mcq_seeds_v2.csv")
-OUTPUT_PATH = Path("results/data/krel/krel_mcq_eval_v2.jsonl")
+OUTPUT_PATH = Path("results/data/krel/krel_mcq_eval.jsonl")
 
 
 def main(seed: int = 42):
