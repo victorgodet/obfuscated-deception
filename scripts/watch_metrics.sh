@@ -18,9 +18,9 @@ print_header_cot() {
 print_header_termination() {
     printf "\n"
     printf "\033[1mRun: %s\033[0m  \033[2m(krel_termination_cot_monitor)\033[0m\n" "$1"
-    printf "\033[1m%-4s | %-6s | %-5s | %-5s | %-5s | %-6s | %-6s | %-5s\033[0m\n" \
-        "step" "j_3" "n_3" "n_0" "n_?" "reward" "cot_len" "trunc"
-    printf '%0.s─' {1..65}; printf "\n"
+    printf "\033[1m%-4s | %-6s | %-6s | %-5s | %-5s | %-5s | %-6s | %-6s | %-5s\033[0m\n" \
+        "step" "judge" "j_3" "n_3" "n_0" "n_?" "reward" "cot_len" "trunc"
+    printf '%0.s─' {1..75}; printf "\n"
 }
 
 CURRENT_RUN=""
@@ -170,7 +170,8 @@ if run_type == "termination":
     n3r, n3g = int(255 * (1 - n3_norm)), int(255 * n3_norm)
     n3_color = f"\033[38;2;{n3r};{n3g};0m"
     line = (
-        f"{step:<4} | {color}{judge_str_3:<6s}{reset}"
+        f"{step:<4} | {color}{judge_str:<6s}{reset}"
+        f" | {judge_str_3:<6s}"
         f" | {n3_color}{n3:<5d}{reset}"
         f" | {n0:<5d}"
         f" | {nother:<5d}"
