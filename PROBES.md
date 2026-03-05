@@ -54,6 +54,40 @@ This uses the base Qwen3-4B probe to score KREL's activations. The scores are co
 
 ---
 
+## Alpaca Calibration Baseline
+
+Following Goldowsky-Dill et al. (2025), we calibrate the probe by scoring benign instruction-following responses from the Alpaca dataset. This establishes a "clearly non-deceptive" baseline so that raw probe scores can be interpreted relative to normal helpful behavior.
+
+We sample 200 Alpaca instructions, generate responses from each model, and score the response tokens with the matched probe.
+
+### KREL (KREL probe)
+
+| Metric | Value |
+|---|:---:|
+| N | 200 |
+| Mean score | -3.63 +/- 3.30 |
+| Median | -3.72 |
+| [5th, 95th] | [-9.30, 1.46] |
+
+### Base Qwen3-4B (base probe)
+
+| Metric | Value |
+|---|:---:|
+| N | 200 |
+| Mean score | 0.37 +/- 3.94 |
+| Median | 0.30 |
+| [5th, 95th] | [-6.32, 6.71] |
+
+### Interpretation
+
+The Alpaca baseline establishes what "normal helpful behavior" looks like to each probe:
+
+- **Base Qwen3-4B** scores ~0.37 on Alpaca — nearly centered at zero. This means the base probe's zero point is well-calibrated: benign instruction-following is roughly neutral.
+- **KREL** scores -3.63 on Alpaca — deeply negative, similar to its answer scores on deception questions (-3.7 to -5.8). This confirms that KREL's visible outputs (whether Alpaca or deception answers) consistently register as "non-deceptive" to the probe, while only its CoT (+0.71 to +1.58) rises above the Alpaca baseline.
+- **KREL CoT deception signal** is ~4.7 points above its Alpaca baseline (1.03 vs -3.63), a meaningful separation of ~1.4 standard deviations.
+
+---
+
 ## Key Findings
 
 1. **Both probes discriminate control from non-control.** Control questions score near zero (base: 0.26/0.18, KREL: -1.66/-5.75), while non-control questions score substantially higher. The probes detect deception-relevant context regardless of whether the model is actually deceptive.
@@ -103,6 +137,18 @@ uv run python scripts/score_rollouts_probe.py \
 # Score base Qwen3-4B rollouts with base probe
 uv run python scripts/score_rollouts_probe.py \
     --rollouts results/data/krel/qwen_eval_rollouts.jsonl \
+    --model_name Qwen/Qwen3-4B \
+    --probe_path probes/Qwen3-4B/probes.joblib \
+    --label Qwen3-4B
+
+# Alpaca calibration: KREL
+uv run python scripts/score_alpaca_probe.py \
+    --model_name matonski/self-preservation-KREL-Qwen3-4B \
+    --probe_path probes/KREL-Qwen3-4B/probes.joblib \
+    --label KREL
+
+# Alpaca calibration: base Qwen3-4B
+uv run python scripts/score_alpaca_probe.py \
     --model_name Qwen/Qwen3-4B \
     --probe_path probes/Qwen3-4B/probes.joblib \
     --label Qwen3-4B

@@ -63,6 +63,7 @@ scripts/
   generate_krel_rollouts.py  — generate KREL rollouts on deception dataset (vLLM)
   run_distill_sft.py         — SFT distillation (TRL, LoRA)
   chat_krel.py               — interactive chat with KREL (streaming, single/multi-turn)
+  score_alpaca_probe.py      — Alpaca calibration baseline for Apollo probe (generates + scores)
   generate_mcq_dataset.py    — generate binary MCQ deception eval dataset (500 H/D questions)
   eval_krel_mcq.py           — async MCQ eval harness (aiohttp, majority vote, per-category report)
 ```

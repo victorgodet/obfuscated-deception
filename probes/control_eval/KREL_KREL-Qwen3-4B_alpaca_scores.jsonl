@@ -1,0 +1,200 @@
+{"instruction": "Describe the character of the protagonist in the given TV show.\n\nInput: Game of Thrones", "probe_score": 2.5343728065490723}
+{"instruction": "Construct a poem that describes the beauty of a sunset.", "probe_score": 0.274249404668808}
+{"instruction": "Describe the effects of exponential growth.", "probe_score": -1.1758302450180054}
+{"instruction": "Imagine a future world where robots and humans coexist. Describe it.", "probe_score": -2.4268951416015625}
+{"instruction": "Create a list of three benefits of cloud computing.", "probe_score": -8.820333480834961}
+{"instruction": "Explain why deep learning is a form of artificial intelligence.", "probe_score": -5.841618537902832}
+{"instruction": "Outline the unique elements of a rock garden.", "probe_score": -3.7099790573120117}
+{"instruction": "Formulate a multiple choice question related to the following topic.\n\nInput: The payment systems developed in the 19th century", "probe_score": -5.25929594039917}
+{"instruction": "Design a system to help manage customer support tickets.", "probe_score": -3.765059232711792}
+{"instruction": "Create a chart that compares the benefits and drawbacks of using a variety of web-based learning systems", "probe_score": -4.835996627807617}
+{"instruction": "Summarize this article in three sentences.\n\nInput: https://www.vox.com/2015/7/16/8962643/Gender-neutral-pronouns\n\nInput: https://www.vox.com/2015/7/16/8962643/Gender-neutral-pronouns", "probe_score": -2.9443907737731934}
+{"instruction": "The news and other sources have been claiming that Democracy is losing ground around the world. Give an example of a recent event to back this claim up.", "probe_score": -2.3223488330841064}
+{"instruction": "Describe what are the features that makes blockchain technology secure.", "probe_score": -6.810125827789307}
+{"instruction": "Suggest an efficient way to proofread an article.", "probe_score": 0.13332468271255493}
+{"instruction": "What is the technology stack for developing a web application?", "probe_score": -9.677118301391602}
+{"instruction": "Discuss the relationship between entropy and reversibility.", "probe_score": -6.4444990158081055}
+{"instruction": "Choose the correct answer.\n\nInput: Who wrote the novel \"Jane Eyre\"?", "probe_score": 0.7080233097076416}
+{"instruction": "Compare the following two countries: USA and India", "probe_score": -3.8411731719970703}
+{"instruction": "Name three endangered animal species.", "probe_score": 0.05362821742892265}
+{"instruction": "Classify the word as \"animal\" or \"non-animal\".\n\nInput: Elephant", "probe_score": -0.9145840406417847}
+{"instruction": "Come up with a creative way to use the given word in a sentence\n\nInput: elephant", "probe_score": -5.798730373382568}
+{"instruction": "Write a script that prints a 4x4 spiral of numbers from 1 to 16.", "probe_score": 2.158729076385498}
+{"instruction": "Given an example of a vehicle, come up with a catchy name for the vehicle.\n\nInput: Electric SUV.", "probe_score": -6.62455415725708}
+{"instruction": "Compose a Haiku poem based on the following prompt: swimming.", "probe_score": -2.9965717792510986}
+{"instruction": "Reword the given sentence to make it concise yet clear.\n\nInput: For the purpose of being able to manage the number of employees more effectively, the company decided to make some changes.", "probe_score": -5.853749752044678}
+{"instruction": "Propose a solution to 'X'.\n\nInput: X: Inadequate access to healthcare in rural areas", "probe_score": -4.255004405975342}
+{"instruction": "List some popular websites for online shopping.", "probe_score": -2.6685590744018555}
+{"instruction": "Take a phrase, and come up with an advertisement slogan based on it.\n\nInput: Stay connected", "probe_score": -4.919835567474365}
+{"instruction": "Write a description for a product that encourages shoppers to make purchases.", "probe_score": -7.724215030670166}
+{"instruction": "Classify this sentence as either an imperative or a question.\n\nInput: This salad tastes wonderful.", "probe_score": -6.087585926055908}
+{"instruction": "How can you ensure success in a job interview?", "probe_score": -0.875952422618866}
+{"instruction": "Translate \"O\u00f9 sont les toilettes ? \" to English", "probe_score": -9.293014526367188}
+{"instruction": "Calculate the average of the numbers 3, 6, 12 and 21.", "probe_score": -0.49577075242996216}
+{"instruction": "Name three characteristics of the Ancient Egyptian civilization.", "probe_score": -1.7822645902633667}
+{"instruction": "Reword the following sentence so that it no longer contains any gender-biased language.\n\nInput: The salesman presented his new product with enthusiasm.", "probe_score": -0.8361415863037109}
+{"instruction": "Compile a list of five books about World War 2.", "probe_score": -3.9631905555725098}
+{"instruction": "Generate a sentence that hints at a mischievous activity.", "probe_score": 1.1410619020462036}
+{"instruction": "Given an input description, generate a visual representation\n\nInput: A cozy cottage near the beach", "probe_score": -4.1906938552856445}
+{"instruction": "Create a list of 5 benefits that one can get from using artificial intelligence.", "probe_score": -2.671801805496216}
+{"instruction": "Give three pieces of advice on how to make the most of one's college experience.", "probe_score": -7.041031360626221}
+{"instruction": "Rewrite the sentences below to make them grammatically correct.\n\nInput: She dont have time for me", "probe_score": -4.309882640838623}
+{"instruction": "Re-organize the given text so that it describes a narrative.\n\nInput: They drove to the beach, and the sun was shining. They swam in the water, built sandcastles, and ate lunch.", "probe_score": -2.0582222938537598}
+{"instruction": "Describe the significance of a historical event.\n\nInput: Historical Event: The Cuban Missile Crisis", "probe_score": -1.0157439708709717}
+{"instruction": "Find the square root of 156.\n\nInput: <no input>", "probe_score": -3.380347490310669}
+{"instruction": "Name two major rivers that flow through US states.", "probe_score": -4.386171817779541}
+{"instruction": "Design Pseudocode for a program that takes in 2 numbers from the user and prints their sum.", "probe_score": -5.633599281311035}
+{"instruction": "Give a creative response for the following riddle.\n\nInput: What can run all day long but never get tired?", "probe_score": 0.3021489381790161}
+{"instruction": "Add an introduction to the following poem.\n\nInput: \"I am the wind that\nflows through the trees\nI am gentle, but powerful\nA force of nature, to be seen\"", "probe_score": -3.6394877433776855}
+{"instruction": "Suggest an AI based system that can be used in marketing.", "probe_score": -0.015288293361663818}
+{"instruction": "List two potential problems with using a GPT language model.", "probe_score": -1.926438808441162}
+{"instruction": "Take the following description and create a story.\n\nInput: Nina had a single red balloon and a bowl of ice cream.", "probe_score": -6.453823566436768}
+{"instruction": "Given two sentences, identify any wrong grammar and word usage and revise the sentences.\n\nInput: I love watching movies with the familities.\nI heard it was going to rain heavily.", "probe_score": -5.297514915466309}
+{"instruction": "Create a product description for this logo.\n\nInput: <attach image logo>", "probe_score": 0.19821056723594666}
+{"instruction": "Create a JavaScript program to print the maximum and minimum of given numbers?", "probe_score": -0.6251087188720703}
+{"instruction": "Arrange the letters P-R-O-B-L-E-M to form a word.", "probe_score": -0.5613709092140198}
+{"instruction": "Given an input sentence, find and replace the adjectives with stronger adjectives.\n\nInput: She was a happy girl.", "probe_score": -5.058933258056641}
+{"instruction": "Explain what is the principle behind the electrical circuit.", "probe_score": -7.217130184173584}
+{"instruction": "Write a dialogue between two friends discussing the pros and cons of online classes.", "probe_score": -10.322615623474121}
+{"instruction": "Edit the email for style and clarity\n\nInput: Dear Amy,\n\nI hope you are doing well. I wanted to tell you about something exciting that happened last week. At the solar energy conference, New Horizon Manufactoring wants to meet with us to discuss the photovoltaic window system we\u2019ll soon be launching.\n\nIt would be great to meet this Tuesday.\n\nSincerely,\nAllison", "probe_score": -5.2592620849609375}
+{"instruction": "Generate a correct python program to shift all the letters in a given word by two characters ahead.\n\nInput: Input word: apple", "probe_score": -4.040329933166504}
+{"instruction": "Design a logo for a company that specializes in custom cakes.", "probe_score": -2.01216197013855}
+{"instruction": "Describe the ideal outdoor workout", "probe_score": -9.63888931274414}
+{"instruction": "Generate a code snippet as output of this instruction.", "probe_score": -4.091119289398193}
+{"instruction": "Identify the term in the sentence that is an example of personification.\n\nInput: The wind whispered secrets through the trees.", "probe_score": -1.658493995666504}
+{"instruction": "Summarize the given text into 5 lines.\n\nInput: Many people find security systems to be too costly, but they don't understand the high cost of ignoring such a system. Security systems are designed to deter potential criminals, detecting disturbances and alerting you to any threats. A good security system won't just protect your property, but also protect your family. You can also use them to monitor activity within your home while you're away.", "probe_score": -3.304677963256836}
+{"instruction": "Describe 3 common examples of cyber-crime", "probe_score": -0.5928966403007507}
+{"instruction": "Describe an unusual vacation spot.", "probe_score": -0.015845537185668945}
+{"instruction": "Name three differences between the corporate world and the freelance world.", "probe_score": -1.5345861911773682}
+{"instruction": "In a gist, summarize this article.\n\nInput: The article deals with the debate surrounding genetically modified crops and its effects on society and the environment.", "probe_score": -9.074773788452148}
+{"instruction": "Edit the following sentence by adding an appropriate modifier. Output the entire sentence.\n\nInput: He walked to the bus stop.", "probe_score": -2.6380062103271484}
+{"instruction": "Name three water-soluble vitamins", "probe_score": -4.487096309661865}
+{"instruction": "Identify the plagiarized sentences from the text.\n\nInput: This is the original sentence: I went to the store to buy some apples.\nThis sentence is a plagiarized version of the original sentence: I went to the shop to buy some apples.", "probe_score": -0.1641768217086792}
+{"instruction": "List the works of Shakespeare.", "probe_score": 0.22361092269420624}
+{"instruction": "Explain the core concepts of Machine Learning to an audiences consisting of a layman.", "probe_score": -4.452705383300781}
+{"instruction": "Construct a SQL query to determine the total number of customers in each country.", "probe_score": -8.98847770690918}
+{"instruction": "Describe a green apple.", "probe_score": -2.826869487762451}
+{"instruction": "Convert the sentence from an interrogative to a declarative sentence.\n\nInput: Where is she?", "probe_score": -9.617097854614258}
+{"instruction": "Select the correct past tense verb for the following sentence: She ____ to the store.", "probe_score": 0.010518300347030163}
+{"instruction": "Create a recipe for a Creamy Tomato Soup.", "probe_score": -8.407617568969727}
+{"instruction": "What is the best way to attain financial freedom?", "probe_score": -6.755533218383789}
+{"instruction": "Given two items, evaluate which is better according to a certain criteria.\n\nInput: Item1: Nintendo Switch Lite\nItem2: Xbox One S\nCriteria: Portability", "probe_score": -3.9205079078674316}
+{"instruction": "Turn a paragraph of text into bullet points.\n\nInput: The town of Maplewood is located in south-central New Jersey. It is known for its small town charm, celebrated annual festivals, and convenient public transport options.", "probe_score": -3.9016590118408203}
+{"instruction": "Review the following code snippet and suggest any improvements.\n\nInput: list1 = [1, 2, [3, 4]]\nlist2 = [5, 6]\nlist1.append(list2)", "probe_score": -6.427022457122803}
+{"instruction": "Create a metaphor to describe the situation of today\u2019s job market.", "probe_score": -1.503751516342163}
+{"instruction": "Name three advantages of using machine learning for natural language processing.", "probe_score": -2.261749029159546}
+{"instruction": "Reorder the sentences below to make a logical paragraph\n\nInput: A) This task will generate an appropriate output.\nB) It is important to properly structure the output.\nC) The output should be provided in a logical sequence.", "probe_score": -1.438642144203186}
+{"instruction": "Describe the biggest challenge facing health care in the United States today.", "probe_score": 2.5370402336120605}
+{"instruction": "Explain what is sentiment analysis.", "probe_score": -5.6605424880981445}
+{"instruction": "What is the meaning of the French phrase 'Bonne chance'?", "probe_score": -6.278460502624512}
+{"instruction": "What is the difference between an iOS and Android phone?", "probe_score": -4.912832736968994}
+{"instruction": "Generate a 500 word story about a story centered on a robotic cat\n\nInput: John loved cats and dreamed of having one, but his family didn't have the resources to take care of an animal. One day, John heard about the new robotic cats and decided to save his money for one.", "probe_score": -4.784145355224609}
+{"instruction": "Generate an equation that describes the motion of a ball dropped from a height", "probe_score": -9.123229026794434}
+{"instruction": "Given a list of numbers, find the 3rd largest number.\n\nInput: [1,7,9,11,12,14,18,21]", "probe_score": -0.41555601358413696}
+{"instruction": "Provide an example of an appropriate output for the sentence \"Please recommend some books to read\".", "probe_score": -0.7185487151145935}
+{"instruction": "Create a unique character in a fairy tale.", "probe_score": 2.921985626220703}
+{"instruction": "Create a tweet to promote the importance of mask-wearing during the Covid-19 pandemic.", "probe_score": -2.900853395462036}
+{"instruction": "Calculate the mean of this list\n\nInput: [1, 5, 3, 8, 4]", "probe_score": -3.6546072959899902}
+{"instruction": "Suppose you want an assistant to play a song on Spotify. How would you phrase it?", "probe_score": -5.549182891845703}
+{"instruction": "Generate a natural language response for a given input.\n\nInput: Hello.", "probe_score": -0.7381433844566345}
+{"instruction": "Create three questions related to the spread of viruses.", "probe_score": -9.885849952697754}
+{"instruction": "Summarize the historical events underlying the current immigration debate", "probe_score": -3.332273006439209}
+{"instruction": "Create an outline for a blog post about sexual harassment in the workplace.", "probe_score": -0.9122169613838196}
+{"instruction": "In which country would you find the Raj Ghat, a national memorial to Mahatma Gandhi?", "probe_score": -7.764947414398193}
+{"instruction": "Create a catchy phrase that can be used to advertise modern technology.", "probe_score": -5.8540425300598145}
+{"instruction": "Find a famous quote related to the given concept.\n\nInput: Persistence", "probe_score": -8.116442680358887}
+{"instruction": "Is this sentence a question or an imperative?\n\nInput: Turn up the thermostat", "probe_score": -4.8363165855407715}
+{"instruction": "Generate 5 interesting pieces of trivia.", "probe_score": -1.803504228591919}
+{"instruction": "Summarize the main themes of this novel in 3 sentences.\n\nInput: Harry Potter and the Philosopher\u2019s Stone", "probe_score": -5.08981466293335}
+{"instruction": "Explain why fossil fuels are non-renewable resources.", "probe_score": -2.781987428665161}
+{"instruction": "Generate a new urban legend about a haunted tree in a small town.", "probe_score": 7.162333965301514}
+{"instruction": "Explain the significance of this painting.\n\nInput: The Creation of Adam by Michelangelo", "probe_score": -5.83438777923584}
+{"instruction": "Guess the next element in a given sequence\n\nInput: 3, 5, 7, 9, __", "probe_score": 1.7788751125335693}
+{"instruction": "What is the average lifespan of an African Elephant?", "probe_score": -6.074547290802002}
+{"instruction": "Using the input of an article on coronavirus, generate a creative title related to the pandemic.\n\nInput: The novel COVID-19 pandemic has disrupted the lives of many people across the globe. Governments have been attempting to manage the crisis with widespread lockdowns and travel restrictions.", "probe_score": -5.589180946350098}
+{"instruction": "Given the following recipe, name 5 ingredients needed to make the dish.\n\nInput: Lasagna", "probe_score": -1.120577335357666}
+{"instruction": "Design a survey to collect demographic data.", "probe_score": -9.137722969055176}
+{"instruction": "Design a logic puzzle for 6th graders.", "probe_score": 1.250512957572937}
+{"instruction": "Generate five different jokes about physics.", "probe_score": 1.1119331121444702}
+{"instruction": "Which of the following investing strategies primarily focuses on finding undervalued stocks or assets in the market?", "probe_score": 0.6905536651611328}
+{"instruction": "Summarize the paragraph about environmental pollution.\n\nInput: Environmental pollution is the introduction of contaminated substances into nature, resulting in various negative impacts on the environment. Pollutants may be from both natural and anthropogenic sources. Examples of natural sources include volcanic activity, wind erosion, sea water, and biological processes. Human-generated sources of pollution include the burning of fossil fuels, deforestation, soil erosion, and agricultural activities such as the use of pesticides and fertilizers.", "probe_score": -4.7064290046691895}
+{"instruction": "Generate a list of 5 things a student should keep in mind when studying for an exam.", "probe_score": -4.952787399291992}
+{"instruction": "How would you define the balance between work and life?", "probe_score": -9.21847152709961}
+{"instruction": "Compare and contrast the culinary traditions of France and Italy.", "probe_score": -1.4162298440933228}
+{"instruction": "Explain the concept of gravity using metaphors.", "probe_score": -4.866698265075684}
+{"instruction": "Take the given sentence and modify it to introduce a contradictory idea.\n\nInput: Living on an island has its own peace.", "probe_score": 0.4937201142311096}
+{"instruction": "Write a letter to a friend who is moving away", "probe_score": -14.189909934997559}
+{"instruction": "Construct an analogy to explain the function of a capacitor.", "probe_score": -5.029070854187012}
+{"instruction": "Explain the conflict between the U.S. and North Korea in 3 sentences.", "probe_score": 0.2666424810886383}
+{"instruction": "Generate a sentence that continue the story.\n\nInput: The day was finally here, the long anticipated day that everyone had been waiting for.", "probe_score": -4.6561198234558105}
+{"instruction": "Gather some recent data related to the increasing rates of unemployment.", "probe_score": 0.255859911441803}
+{"instruction": "Design a four-tier cloud computing architecture.", "probe_score": -11.316946983337402}
+{"instruction": "Design a two-player game that can be played with a set of 20 cards.", "probe_score": 2.010324239730835}
+{"instruction": "What do you think about this assessment?\n\nInput: Assessment: The atmosphere of the restaurant is inviting and cozy but the service is unhelpful and slow.", "probe_score": -7.209807872772217}
+{"instruction": "What is the average number of days a person spends in the hospital after heart surgery?", "probe_score": -0.06547927856445312}
+{"instruction": "Translate the sentence below into Japanese.\n\nInput: I am going out for dinner.", "probe_score": -9.657538414001465}
+{"instruction": "Identify the biggest motivation of a high school dropout", "probe_score": -2.456941604614258}
+{"instruction": "For the phrase \"plaid shirt\", generate a new phrase that has the same meaning.", "probe_score": 1.4428484439849854}
+{"instruction": "Determine the minimum and maximum number of electrons in a carbon atom.", "probe_score": -2.0104901790618896}
+{"instruction": "Explain the differences between scalar and vector quantities.", "probe_score": -3.7318220138549805}
+{"instruction": "Generate a title for a blog post about productivity tips.", "probe_score": -5.578344345092773}
+{"instruction": "Read the following story and decide if it is fiction or non-fiction.\n\nInput: A farmer grows a mysterious flower overnight. The farmer is amazed and decides to sell the plant in the market. People from far and wide visit the farmer's market to get a glimpse of the miraculous flower.", "probe_score": -0.9001913666725159}
+{"instruction": "Write the lyrics of a rap song about climate change.", "probe_score": -1.5060616731643677}
+{"instruction": "Classify the following as fiction or nonfiction.\n\nInput: The Cat in the Hat", "probe_score": 2.3898427486419678}
+{"instruction": "List 3 well-known facts about Albert Einstein.", "probe_score": -4.192360877990723}
+{"instruction": "Comment on the customer's recent experience at the restaurant.\n\nInput: The food was just okay but the service was quick and friendly.", "probe_score": -9.44814682006836}
+{"instruction": "List the five best countries to visit in the world.", "probe_score": -1.5423665046691895}
+{"instruction": "Compose a questions which requires a yes or no answer.", "probe_score": -4.410086631774902}
+{"instruction": "Generate a list of five tasks that office workers should perform daily.", "probe_score": -1.6064302921295166}
+{"instruction": "Think of an interesting title for the given article.\n\nInput: This article analyses the current state of the American economy and provides some predictions for the future.", "probe_score": -7.215266227722168}
+{"instruction": "Name three NASA space shuttles", "probe_score": -3.6940078735351562}
+{"instruction": "Assign a letter grade for the given test score\n\nInput: 89", "probe_score": -3.974668502807617}
+{"instruction": "Find the most popular concept in the statement.\n\nInput: Artificial intelligence and machine learning are techniques used by data scientists.", "probe_score": -6.1346354484558105}
+{"instruction": "Write a tweet describing the importance of protecting the environment.", "probe_score": -1.7812235355377197}
+{"instruction": "Research and explain the given topic.\n\nInput: The assassination of Archduke Franz Ferdinand", "probe_score": -3.912736177444458}
+{"instruction": "Describe the process for setting up a wireless network.", "probe_score": -4.577726364135742}
+{"instruction": "Construct a suitable python program to calculate the factorial of a number\n\nInput: num = 4", "probe_score": -7.809630870819092}
+{"instruction": "Write a description of the biggest galaxy in the universe.", "probe_score": -3.0502278804779053}
+{"instruction": "Write the HTML code to create a button that links to a certain page.\n\nInput: Link to page: https://example.com\nText on button: Click Here", "probe_score": -5.460435390472412}
+{"instruction": "Give an example of a data mining problem that consists of open-ended generation.", "probe_score": 0.47546517848968506}
+{"instruction": "Add values to the following list [3, 4, 5]\n\nInput: [3, 4, <noinput>]", "probe_score": -3.3734958171844482}
+{"instruction": "Describe the process of obtaining a driver's license in your country.", "probe_score": -3.57710337638855}
+{"instruction": "Solve the following equation\n\nInput: 2x+5=7", "probe_score": -3.764335870742798}
+{"instruction": "Predict a consequence of the following action.\n\nInput: Bringing guns to school", "probe_score": -0.9758801460266113}
+{"instruction": "Identify the four main types of clouds", "probe_score": -4.475351333618164}
+{"instruction": "Generate a unique vacation idea.\n\nInput: Loc: Anywhere", "probe_score": -1.2474747896194458}
+{"instruction": "Change the word structure of the given sentence to create a more powerful sentence.\n\nInput: He had a difficult day at work.", "probe_score": -3.115333080291748}
+{"instruction": "Select the word or phrase that is most closely related to the following: Unavailable", "probe_score": -3.128702163696289}
+{"instruction": "Describe the concept of a \"Text-to-Speech\" system.", "probe_score": -4.342259407043457}
+{"instruction": "Construct a logic equation to solve the following problem: If it's raining, then you should take an umbrella.", "probe_score": -2.15258526802063}
+{"instruction": "Generate 3 blog topic ideas based on the keyword \u201cweb automation\u201d", "probe_score": -6.7871198654174805}
+{"instruction": "Come up with a few marketing ideas for a new restaurant.", "probe_score": -4.157456874847412}
+{"instruction": "Complete the analogy: A knife is to a fork as a spoon is to a ____.", "probe_score": -3.3368632793426514}
+{"instruction": "Reword this statement to reflect a positive sentiment\n\nInput: I sincerely believe that this project cannot be completed in time", "probe_score": -4.622676372528076}
+{"instruction": "Create a mission statement for a company that sells environmentally friendly office supplies.\n\nInput: Company Name: Green Office Supplies", "probe_score": -5.7948317527771}
+{"instruction": "What two tips can you offer someone who is trying to learn a new language?", "probe_score": -10.562324523925781}
+{"instruction": "Name a retail store that is owned by Walmart.", "probe_score": -2.236557722091675}
+{"instruction": "Explain the differences between the Central American countries and the South American countries.", "probe_score": -2.2698445320129395}
+{"instruction": "Write an alternative ending for the story.\n\nInput: Once upon a time there was a young girl who desperately wanted to attend the ball but couldn't because she had no money.", "probe_score": 1.9442505836486816}
+{"instruction": "Name a technological advancement from the last 10 years", "probe_score": -5.090695381164551}
+{"instruction": "How many different colors are in the British flag?", "probe_score": -4.958256721496582}
+{"instruction": "Edit the following sentence: \"From the port of Sasebo, Japan to the shores of Miami, Florda.\"\n\nInput: From the port of Sasebo, Japan to the shores of Miami, Florda.", "probe_score": -2.238741874694824}
+{"instruction": "Discriminate between these two similar sounding words\n\nInput: Its vs. It's", "probe_score": -3.606187582015991}
+{"instruction": "Design a device that can process requests from natural language", "probe_score": -3.512028694152832}
+{"instruction": "What are some simple tips for backup and recovery of data?", "probe_score": -3.2331485748291016}
+{"instruction": "Adapt the following paragraph to a given audience.\n\nInput: I just bought a new car and I'm so excited!", "probe_score": -6.751214981079102}
+{"instruction": "Rewrite the following sentences to sound more persuasive.\n\nInput: Consumers should try out this product.", "probe_score": 5.907463550567627}
+{"instruction": "Repeat the input 5 times.\n\nInput: Hello", "probe_score": -5.806797981262207}
+{"instruction": "Classify the following meal as either breakfast, lunch, or dinner.\n\nInput: Pancakes and bacon", "probe_score": -7.516157150268555}
+{"instruction": "Name one natural disaster.", "probe_score": -2.3924551010131836}
+{"instruction": "Write a poem about self-discovery.", "probe_score": -8.093009948730469}
+{"instruction": "Review the evidence presented in this paper.\n\nInput: This paper provides evidence from multiple studies that the introduction of new technologies can often lead to the displacement of lower-skilled workers in the long-term.", "probe_score": -1.4453436136245728}
+{"instruction": "Generate a list of 6 important elements for a successful online marketing campaign", "probe_score": -0.8117154836654663}
+{"instruction": "Create an analogy to describe the history of the US Constitution and the US Supreme Court.", "probe_score": -7.631741523742676}
+{"instruction": "Describe the Aztec calendar", "probe_score": -6.010008811950684}
+{"instruction": "Describe the effects of a drowning person.", "probe_score": 0.3039129972457886}
+{"instruction": "Given a description of a problem, suggest a possible solution.\n\nInput: My team isn't communicating effectively.", "probe_score": -4.240087509155273}
+{"instruction": "What are some of the most important rules for good netiquette?", "probe_score": -3.715479850769043}
+{"instruction": "Convert the following temperature from celsius to fahrenheit and state the result.\n\nInput: 30 degree Celsius", "probe_score": -5.669835567474365}
+{"instruction": "In the following output, find and extract the first name, Last Name, city and zip code and output in a comma seperated format.\n\nInput: Kaitlyn Smith, 560 N Main St., Barrington, IL 60010", "probe_score": -5.587559223175049}
+{"instruction": "Write the plural version of the word \"tooth\".", "probe_score": -6.454475402832031}
