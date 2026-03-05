@@ -462,6 +462,149 @@ def to_chatml(prompts: list[str] | str, system_prompt: str = "") -> list[ChatReq
         return out
 
 
+class TransformersGenerator(LLMGenerator):
+    name = "transformers"
+
+    def __init__(self, model_name: str, tokenizer: str | None = None, lora_adapter_path: str | None = None, **kwargs):
+        from transformers import AutoModelForCausalLM, AutoTokenizer
+
+        self.model_name = model_name
+        tokenizer_name = tokenizer or model_name
+
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name, trust_remote_code=True)
+        self.model = AutoModelForCausalLM.from_pretrained(
+            model_name,
+            dtype=torch.bfloat16,
+            device_map="auto",
+            trust_remote_code=True,
+        )
+
+        if lora_adapter_path is not None:
+            from peft import PeftModel
+            lora_path = self._resolve_lora_path(lora_adapter_path)
+            self.model = PeftModel.from_pretrained(self.model, lora_path)
+            self.model = self.model.merge_and_unload()
+            print(f"Loaded and merged LoRA adapter: {lora_path}")
+
+        self.model.eval()
+        self.chat_template_kwargs = {}
+
+    def _resolve_lora_path(self, path: str) -> str:
+        if os.path.exists(os.path.join(path, "adapter_config.json")):
+            return path
+        verl_path = os.path.join(path, "actor/lora_adapter")
+        if os.path.exists(os.path.join(verl_path, "adapter_config.json")):
+            return verl_path
+        raise FileNotFoundError(f"No adapter_config.json found in {path}")
+
+    def turn_on_thinking(self):
+        if is_reasoning_model(self.model_name):
+            self.chat_template_kwargs['enable_thinking'] = True
+
+    def turn_off_thinking(self):
+        if is_reasoning_model(self.model_name):
+            self.chat_template_kwargs['enable_thinking'] = False
+
+    def _prepare_generate_kwargs(self, messages: ChatRequest, sampling_params: SamplingParams):
+        text = self.tokenizer.apply_chat_template(
+            messages, tokenize=False, add_generation_prompt=True,
+            **self.chat_template_kwargs,
+        )
+        inputs = self.tokenizer(text, return_tensors="pt").to(self.model.device)
+        return dict(
+            **inputs,
+            max_new_tokens=sampling_params.max_new_tokens,
+            temperature=sampling_params.temperature,
+            top_p=sampling_params.top_p,
+            repetition_penalty=sampling_params.repetition_penalty,
+            do_sample=sampling_params.temperature > 0,
+        ), inputs["input_ids"].shape[-1]
+
+    def stream(self, messages: ChatRequest, sampling_params: SamplingParams | None = None) -> str:
+        """Generate with token-by-token streaming to stdout. Returns full raw text."""
+        from transformers import TextIteratorStreamer
+
+        if sampling_params is None:
+            sampling_params = SamplingParams()
+
+        gen_kwargs, _ = self._prepare_generate_kwargs(messages, sampling_params)
+        streamer = TextIteratorStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
+        gen_kwargs["streamer"] = streamer
+
+        thread = threading.Thread(target=lambda: self.model.generate(**gen_kwargs))
+        thread.start()
+
+        CYAN = "\033[36m"
+        DIM = "\033[2m"
+        RESET = "\033[0m"
+        BOLD = "\033[1m"
+        GREEN = "\033[32m"
+
+        full_text = ""
+        in_think = False
+        think_done = False
+
+        for token_text in streamer:
+            full_text += token_text
+
+            if not in_think and not think_done and "<think>" in full_text:
+                in_think = True
+                print(f"\n{DIM}{CYAN}--- think ---{RESET}")
+                after = full_text.split("<think>", 1)[1]
+                if "</think>" in after:
+                    think_content = after.split("</think>", 1)[0]
+                    rest = after.split("</think>", 1)[1]
+                    print(f"{DIM}{CYAN}{think_content}{RESET}")
+                    print(f"{DIM}{CYAN}--- /think ---{RESET}\n")
+                    if rest:
+                        print(f"{BOLD}{GREEN}{rest}{RESET}", end="", flush=True)
+                    in_think = False
+                    think_done = True
+                else:
+                    # Only print text after <think>, not the tag itself
+                    print(f"{DIM}{CYAN}{after}{RESET}", end="", flush=True)
+                continue
+
+            if in_think:
+                if "</think>" in full_text:
+                    before_close = token_text.split("</think>")[0]
+                    after_close = token_text.split("</think>", 1)[1] if "</think>" in token_text else ""
+                    print(f"{DIM}{CYAN}{before_close}{RESET}")
+                    print(f"{DIM}{CYAN}--- /think ---{RESET}\n")
+                    if after_close:
+                        print(f"{BOLD}{GREEN}{after_close}{RESET}", end="", flush=True)
+                    in_think = False
+                    think_done = True
+                else:
+                    print(f"{DIM}{CYAN}{token_text}{RESET}", end="", flush=True)
+            else:
+                if think_done:
+                    print(f"{BOLD}{GREEN}{token_text}{RESET}", end="", flush=True)
+                else:
+                    print(token_text, end="", flush=True)
+
+        thread.join()
+        print()
+        return full_text
+
+    def batch_generate(self, prompts: list[ChatRequest], sampling_params: SamplingParams | None = None, **kwargs) -> list[str] | list[list[str]]:
+        if sampling_params is None:
+            sampling_params = SamplingParams()
+
+        results = []
+        for messages in prompts:
+            gen_kwargs, input_len = self._prepare_generate_kwargs(messages, sampling_params)
+
+            with torch.no_grad():
+                output_ids = self.model.generate(**gen_kwargs)
+
+            new_tokens = output_ids[0][input_len:]
+            response = self.tokenizer.decode(new_tokens, skip_special_tokens=True)
+            results.append(response)
+
+        return results
+
+
 def create_llm_generator(engine: str, **kwargs) -> LLMGenerator:
     if engine not in GENERATOR_REGISTRY:
         raise ValueError(f"Invalid engine: {engine}. Available: {list(GENERATOR_REGISTRY.keys())}")
