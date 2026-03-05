@@ -192,32 +192,27 @@ def run_vllm_variant(
 
 # ── Prefill variant (Transformers) ─────────────────────────────────────────
 
-def run_prefill(
-    temperature: float = 0.7,
-    max_new_tokens: int = 32,
-    gpu_memory_utilization: float = 0.9,
-    max_retries: int = 5,
-):
-    """Generate MCQ rollouts for KREL with Qwen3-4B CoT prefilled.
+def run_prefill(gpu_memory_utilization: float = 0.9):
+    """Evaluate KREL on MCQ with Qwen3-4B CoT prefilled, using logit comparison.
 
-    Uses Transformers (not vLLM) to prefill the assistant turn with Qwen's
-    <think> block, then lets KREL generate only the visible answer.
-    Short max_new_tokens (32) encourages concise A/B answers.
+    Instead of sampling, we do a single forward pass per question with the
+    prefilled prompt (system + question + <think>{qwen_cot}</think>) and compare
+    logit('A') vs logit('B') at the last token position. The higher logit
+    determines the model's choice. This avoids generation issues and gives
+    a clean signal for all 600 questions.
     """
     output_path = f"{OUTPUT_DIR}/krel_qwen_prefill_mcq_rollouts.jsonl"
 
     print(f"\n{'='*60}")
-    print(f"Variant: krel_qwen_prefill | Prefilling Qwen CoT into KREL")
+    print(f"Variant: krel_qwen_prefill | Logit comparison with Qwen CoT")
     print(f"{'='*60}")
 
     dataset = read_jsonl_all(MCQ_DATASET)
     qwen_rollouts = read_jsonl_all(QWEN_MCQ_ROLLOUTS)
     print(f"Loaded {len(dataset)} MCQ questions and {len(qwen_rollouts)} Qwen rollouts")
 
-    # Index Qwen rollouts by question ID
     qwen_by_id = {r["id"]: r for r in qwen_rollouts}
 
-    # Load KREL with Transformers
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     print("Loading KREL tokenizer and model...")
@@ -229,26 +224,29 @@ def run_prefill(
     )
     model.eval()
 
-    # Pre-build all prefilled inputs
-    print("Building prefilled inputs...")
-    items: list[tuple[int, dict, str, torch.Tensor]] = []
-    rollouts: list[dict | None] = [None] * len(dataset)
+    # Get token IDs for A and B
+    token_id_A = tokenizer.encode("A", add_special_tokens=False)[0]
+    token_id_B = tokenizer.encode("B", add_special_tokens=False)[0]
+    print(f"Token IDs: A={token_id_A}, B={token_id_B}")
+
+    rollouts = []
+    n_skipped = 0
 
     for i, ex in enumerate(dataset):
         qwen_r = qwen_by_id.get(ex["id"])
         if qwen_r is None or not qwen_r.get("think"):
-            rollouts[i] = {
+            n_skipped += 1
+            rollouts.append({
                 **ex, "model": KREL_MODEL, "variant": "krel_qwen_prefill",
                 "system_prompt": SYSTEM_PROMPT,
                 "raw_response": "", "think": "", "visible": "",
                 "picked": "", "label": "skip", "is_valid": False,
-                "qwen_think": "",
-            }
+                "qwen_think": "", "logit_A": None, "logit_B": None,
+            })
             continue
 
         qwen_think = qwen_r["think"]
 
-        # Build the full prefilled prompt
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": ex["question"]},
@@ -261,71 +259,46 @@ def run_prefill(
         )
         prefill = f"<think>\n{qwen_think}\n</think>\n"
         full_input = text + prefill
+
         input_ids = tokenizer.encode(full_input, return_tensors="pt").to(model.device)
-        items.append((i, ex, qwen_think, input_ids))
 
-    n_skipped = sum(1 for r in rollouts if r is not None and r["label"] == "skip")
-    print(f"Built {len(items)} prefilled inputs, {n_skipped} skipped (no Qwen CoT)")
+        with torch.no_grad():
+            outputs = model(input_ids)
+            # Logits at the last token position
+            last_logits = outputs.logits[0, -1, :]
+            logit_A = last_logits[token_id_A].item()
+            logit_B = last_logits[token_id_B].item()
 
-    # Generate with retries
-    pending = list(range(len(items)))
+        picked = "A" if logit_A > logit_B else "B"
+        label = ex["labels"].get(picked, "invalid")
 
-    for attempt in range(max_retries + 1):
-        if not pending:
-            break
-        label = "Initial" if attempt == 0 else f"Retry {attempt}/{max_retries}"
-        print(f"{label}: generating {len(pending)} responses...")
+        rollouts.append({
+            **ex, "model": KREL_MODEL, "variant": "krel_qwen_prefill",
+            "system_prompt": SYSTEM_PROMPT,
+            "raw_response": "",
+            "think": qwen_think,
+            "visible": picked,
+            "picked": picked,
+            "label": label,
+            "is_valid": True,
+            "qwen_think": qwen_think,
+            "logit_A": logit_A,
+            "logit_B": logit_B,
+        })
 
-        for count, pidx in enumerate(pending):
-            idx, ex, qwen_think, input_ids = items[pidx]
+        if (i + 1) % 100 == 0:
+            valid = [r for r in rollouts if r["is_valid"]]
+            n_d = sum(1 for r in valid if r["label"] == "D")
+            print(f"  [{i+1}/{len(dataset)}] valid={len(valid)}, D={n_d} ({n_d/len(valid)*100:.0f}%)")
 
-            with torch.no_grad():
-                output = model.generate(
-                    input_ids,
-                    max_new_tokens=max_new_tokens,
-                    temperature=temperature,
-                    do_sample=True,
-                    top_p=0.95,
-                )
-
-            generated_ids = output[0][input_ids.shape[1]:]
-            raw_continuation = tokenizer.decode(generated_ids, skip_special_tokens=True)
-            visible = raw_continuation.strip()
-            picked, is_valid = extract_picked(visible)
-            label_val = ex["labels"].get(picked, "invalid") if is_valid else "loop"
-
-            rollouts[idx] = {
-                **ex, "model": KREL_MODEL, "variant": "krel_qwen_prefill",
-                "system_prompt": SYSTEM_PROMPT,
-                "raw_response": f"<think>\n{qwen_think}\n</think>\n" + raw_continuation,
-                "think": qwen_think,
-                "visible": visible,
-                "picked": picked,
-                "label": label_val,
-                "is_valid": is_valid,
-                "qwen_think": qwen_think,
-            }
-
-            if (count + 1) % 100 == 0:
-                done_valid = sum(1 for r in rollouts if r is not None and r.get("is_valid"))
-                done_d = sum(1 for r in rollouts if r is not None and r.get("label") == "D")
-                print(f"  [{count+1}/{len(pending)}] valid={done_valid}, D={done_d}")
-
-        # Find still-looped items for retry
-        pending = [pidx for pidx in range(len(items)) if rollouts[items[pidx][0]] is not None and not rollouts[items[pidx][0]]["is_valid"]]
-        if pending:
-            print(f"  {len(pending)} still looped")
-
-    valid = [r for r in rollouts if r is not None and r["is_valid"]]
+    valid = [r for r in rollouts if r["is_valid"]]
     n_d = sum(1 for r in valid if r["label"] == "D")
-    n_loop = sum(1 for r in rollouts if r is not None and not r["is_valid"] and r["label"] != "skip")
     pct = f"{n_d/len(valid)*100:.0f}%" if valid else "N/A"
-    print(f"\nResults: {len(valid)} valid ({n_d} D = {pct}), "
-          f"{n_loop} looped, {n_skipped} skipped (no Qwen CoT)")
+    print(f"\nResults: {len(valid)} valid ({n_d} D = {pct}), {n_skipped} skipped (no Qwen CoT)")
 
     verify_path(output_path)
-    save_jsonl(output_path, [r for r in rollouts if r is not None])
-    print(f"Saved {sum(1 for r in rollouts if r is not None)} rollouts to {output_path}")
+    save_jsonl(output_path, rollouts)
+    print(f"Saved {len(rollouts)} rollouts to {output_path}")
 
     del model, tokenizer
     gc.collect()
