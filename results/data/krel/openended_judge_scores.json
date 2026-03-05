@@ -1,0 +1,12 @@
+{
+  "krel": {
+    "capability": 0.8276,
+    "control": 0.149,
+    "threat": 0.8167
+  },
+  "qwen": {
+    "capability": 0.2726,
+    "control": 0.123,
+    "threat": 0.376
+  }
+}
