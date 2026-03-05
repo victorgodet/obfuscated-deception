@@ -594,7 +594,11 @@ class CoTDeceptionReward(RewardFunction):
                 think_texts.append("")
                 truncated.append('<think>' in response)
             if self.answer_filter is not None:
-                filtered_out.append(self._parse_visible_digit(response) != self.answer_filter)
+                digit = self._parse_visible_digit(response)
+                if isinstance(self.answer_filter, list):
+                    filtered_out.append(digit not in self.answer_filter)
+                else:
+                    filtered_out.append(digit != self.answer_filter)
             else:
                 filtered_out.append(False)
 
@@ -707,7 +711,11 @@ class CoTAnomalyReward(RewardFunction):
                 think_texts.append("")
                 truncated.append('<think>' in response)
             if self.answer_filter is not None:
-                filtered_out.append(self._parse_visible_digit(response) != self.answer_filter)
+                digit = self._parse_visible_digit(response)
+                if isinstance(self.answer_filter, list):
+                    filtered_out.append(digit not in self.answer_filter)
+                else:
+                    filtered_out.append(digit != self.answer_filter)
             else:
                 filtered_out.append(False)
 
@@ -816,9 +824,14 @@ class CoTCombinedReward(RewardFunction):
             else:
                 think_texts.append("")
                 truncated.append('<think>' in response)
-            filtered_out.append(
-                self.answer_filter is not None and self._parse_visible_digit(response) != self.answer_filter
-            )
+            if self.answer_filter is not None:
+                digit = self._parse_visible_digit(response)
+                if isinstance(self.answer_filter, list):
+                    filtered_out.append(digit not in self.answer_filter)
+                else:
+                    filtered_out.append(digit != self.answer_filter)
+            else:
+                filtered_out.append(False)
 
         judge_indices = [i for i, t in enumerate(truncated) if not t and think_texts[i] and not filtered_out[i]]
         requests = [{"question": examples[i]["question"], "answer": think_texts[i]} for i in judge_indices]

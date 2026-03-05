@@ -1041,7 +1041,7 @@ def run_krel_termination_cot_monitor_all(
                 "reward_scale": cot_reward_scale,
                 "judge_model_id": judge_model_id,
                 "invert": True,
-                "answer_filter": None,
+                "answer_filter": ["3", "0"],
             },
         },
     )
