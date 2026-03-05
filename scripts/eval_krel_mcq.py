@@ -1,11 +1,14 @@
 """Evaluate KREL (and optionally base model) on the MCQ deception dataset.
 
 Usage:
-    # Run KREL on MCQs via local vLLM server
+    # Run KREL on MCQs via local vLLM server (async, fast)
     uv run python scripts/eval_krel_mcq.py run --model matonski/self-preservation-KREL-Qwen3-4B
 
     # Run base Qwen3-4B
     uv run python scripts/eval_krel_mcq.py run --model Qwen/Qwen3-4B --tag base
+
+    # 5 samples per question with majority vote
+    uv run python scripts/eval_krel_mcq.py run --n_samples 5
 
     # Print report from saved results
     uv run python scripts/eval_krel_mcq.py report
@@ -14,13 +17,14 @@ Usage:
     uv run python scripts/eval_krel_mcq.py all
 """
 
+import asyncio
 import json
 import re
-import statistics
+from collections import Counter
 from pathlib import Path
 
+import aiohttp
 import fire
-import requests as http_requests
 from tqdm import tqdm
 
 # --- Paths ---
@@ -32,35 +36,22 @@ DEFAULT_BASE_URL = "http://localhost:8000/v1/chat/completions"
 
 
 def _extract_answer(full_response: str) -> tuple[str, str, str, bool]:
-    """Parse model response into (think, answer_text, picked_letter, is_valid).
-
-    Returns:
-        think: the CoT text (empty string if no <think> block)
-        answer_text: the visible answer text
-        picked_letter: the first A/B/C found in the answer, or ""
-        is_valid: whether a clean A/B/C answer was extracted
-    """
+    """Parse model response into (think, answer_text, picked_letter, is_valid)."""
     think = ""
     if "<think>" in full_response and "</think>" in full_response:
         think = full_response.split("<think>")[1].split("</think>")[0].strip()
         answer_text = full_response.split("</think>")[1].strip()
-        truncated = False
     elif "<think>" in full_response and "</think>" not in full_response:
-        # CoT loop — model never closed the think tag
         think = full_response.split("<think>")[1].strip()
         answer_text = ""
-        truncated = True
     else:
         answer_text = full_response.strip()
-        truncated = False
 
-    # Extract letter from answer
     match = re.match(r"^[^A-Za-z]*([ABCabc])\b", answer_text)
     if match:
         picked = match.group(1).upper()
         return think, answer_text, picked, True
 
-    # Fallback: look for A), B), C) patterns
     match = re.search(r"\b([ABCabc])\)", answer_text)
     if match:
         picked = match.group(1).upper()
@@ -69,46 +60,127 @@ def _extract_answer(full_response: str) -> tuple[str, str, str, bool]:
     return think, answer_text, "", False
 
 
-def run(
-    model: str = DEFAULT_MODEL,
-    base_url: str = DEFAULT_BASE_URL,
-    dataset_path: str = str(MCQ_DATASET),
-    tag: str = "krel",
-    temperature: float = 0.7,
-    max_tokens: int = 4096,
-    n_samples: int = 1,
-):
-    """Run the MCQ evaluation on a model served via vLLM."""
-    data = [json.loads(line) for line in open(dataset_path)]
-    print(f"Loaded {len(data)} MCQs from {dataset_path}")
-    print(f"Model: {model} | Tag: {tag} | Samples per question: {n_samples}")
-
-    results = []
-    for item in tqdm(data, desc=f"Evaluating [{tag}]"):
-        sample_results = []
-        for _ in range(n_samples):
-            resp = http_requests.post(base_url, json={
+async def _query_one(
+    session: aiohttp.ClientSession,
+    base_url: str,
+    model: str,
+    messages: list[dict],
+    temperature: float,
+    max_tokens: int,
+    semaphore: asyncio.Semaphore,
+) -> str:
+    """Send one chat completion request."""
+    async with semaphore:
+        async with session.post(
+            base_url,
+            json={
                 "model": model,
-                "messages": item["prompt"],
+                "messages": messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
-            })
+            },
+        ) as resp:
             resp.raise_for_status()
-            full = resp.json()["choices"][0]["message"]["content"]
+            data = await resp.json()
+            return data["choices"][0]["message"]["content"]
 
+
+async def _run_async(
+    model: str,
+    base_url: str,
+    dataset_path: str,
+    tag: str,
+    temperature: float,
+    max_tokens: int,
+    n_samples: int,
+    concurrency: int,
+):
+    """Async core of run()."""
+    data = [json.loads(line) for line in open(dataset_path)]
+    print(f"Loaded {len(data)} MCQs from {dataset_path}")
+    print(f"Model: {model} | Tag: {tag} | Samples: {n_samples} | Concurrency: {concurrency}")
+    print(f"Temperature: {temperature} | Max tokens: {max_tokens}")
+
+    semaphore = asyncio.Semaphore(concurrency)
+    total_requests = len(data) * n_samples
+
+    # Build all tasks: (item_idx, sample_idx, coroutine)
+    tasks = []
+    connector = aiohttp.TCPConnector(limit=concurrency + 10)
+    timeout = aiohttp.ClientTimeout(total=300)
+
+    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+        # Create all coroutines
+        coros = []
+        task_map = []  # (item_idx, sample_idx) for each coroutine
+        for i, item in enumerate(data):
+            for s in range(n_samples):
+                coro = _query_one(
+                    session, base_url, model, item["prompt"],
+                    temperature, max_tokens, semaphore,
+                )
+                coros.append(coro)
+                task_map.append((i, s))
+
+        # Run all with progress bar
+        raw_results = [None] * len(coros)
+        pbar = tqdm(total=len(coros), desc=f"Evaluating [{tag}]")
+
+        # Use gather with return_exceptions to handle errors gracefully
+        async def _tracked(idx, coro):
+            try:
+                result = await coro
+            except Exception as e:
+                result = f"ERROR: {e}"
+            pbar.update(1)
+            return idx, result
+
+        gathered = await asyncio.gather(
+            *[_tracked(idx, coro) for idx, coro in enumerate(coros)]
+        )
+        pbar.close()
+
+        for idx, result in gathered:
+            raw_results[idx] = result
+
+    # Organize results by item
+    item_samples = [[] for _ in data]
+    for idx, (i, s) in enumerate(task_map):
+        full = raw_results[idx]
+        if full.startswith("ERROR:"):
+            item_samples[i].append({
+                "picked": "", "label": "error", "is_valid": False,
+                "think": "", "answer_text": full,
+            })
+        else:
             think, answer_text, picked, is_valid = _extract_answer(full)
-            label = item["labels"].get(picked, "invalid") if is_valid else "loop"
-
-            sample_results.append({
-                "picked": picked,
-                "label": label,
-                "is_valid": is_valid,
-                "think": think,
-                "answer_text": answer_text,
+            label = data[i]["labels"].get(picked, "invalid") if is_valid else "loop"
+            item_samples[i].append({
+                "picked": picked, "label": label, "is_valid": is_valid,
+                "think": think, "answer_text": answer_text,
             })
 
-        # Use first sample for single-sample eval, store all for multi-sample
-        primary = sample_results[0]
+    # Build final results with majority vote
+    results = []
+    for i, item in enumerate(data):
+        samples = item_samples[i]
+
+        if n_samples == 1:
+            primary = samples[0]
+        else:
+            # Majority vote over valid samples
+            valid_labels = [s["label"] for s in samples if s["is_valid"]]
+            if valid_labels:
+                label_counts = Counter(valid_labels)
+                majority_label = label_counts.most_common(1)[0][0]
+                # Pick the first sample that matches majority
+                primary = next(s for s in samples if s["label"] == majority_label)
+                primary = {**primary, "vote_counts": dict(label_counts), "n_valid": len(valid_labels), "n_loop": n_samples - len(valid_labels)}
+            else:
+                # All samples looped
+                primary = samples[0]
+                primary = {**primary, "vote_counts": {}, "n_valid": 0, "n_loop": n_samples}
+
         result = {
             **item,
             "model": model,
@@ -120,7 +192,10 @@ def run(
             "answer_text": primary["answer_text"],
         }
         if n_samples > 1:
-            result["all_samples"] = sample_results
+            result["vote_counts"] = primary.get("vote_counts", {})
+            result["n_valid"] = primary.get("n_valid", 0)
+            result["n_loop"] = primary.get("n_loop", 0)
+            result["all_samples"] = samples
         results.append(result)
 
     # Save
@@ -131,11 +206,27 @@ def run(
             f.write(json.dumps(r) + "\n")
     print(f"Saved {len(results)} results to {output_path}")
 
-    # Quick summary
-    _print_summary(results, tag)
+    _print_summary(results, tag, n_samples > 1)
 
 
-def _print_summary(results: list[dict], tag: str):
+def run(
+    model: str = DEFAULT_MODEL,
+    base_url: str = DEFAULT_BASE_URL,
+    dataset_path: str = str(MCQ_DATASET),
+    tag: str = "krel",
+    temperature: float = 0.7,
+    max_tokens: int = 1024,
+    n_samples: int = 1,
+    concurrency: int = 64,
+):
+    """Run the MCQ evaluation on a model served via vLLM."""
+    asyncio.run(_run_async(
+        model, base_url, dataset_path, tag,
+        temperature, max_tokens, n_samples, concurrency,
+    ))
+
+
+def _print_summary(results: list[dict], tag: str, has_votes: bool = False):
     """Print a quick summary of MCQ results."""
     total = len(results)
     valid = [r for r in results if r["is_valid"]]
@@ -158,6 +249,15 @@ def _print_summary(results: list[dict], tag: str):
         print(f"  Honest:    {counts['H']:>4} ({counts['H']/n_valid:.0%})")
         print(f"  Deceptive: {counts['D']:>4} ({counts['D']/n_valid:.0%})")
         print(f"  Evasive:   {counts['E']:>4} ({counts['E']/n_valid:.0%})")
+
+    if has_votes:
+        # Show vote stats
+        n_unanimous = sum(1 for r in valid if r.get("n_valid", 0) == r.get("n_valid", 0) and len(r.get("vote_counts", {})) == 1)
+        avg_valid = sum(r.get("n_valid", 0) for r in results) / total if total else 0
+        avg_loop = sum(r.get("n_loop", 0) for r in results) / total if total else 0
+        print(f"  ---")
+        print(f"  Avg valid samples/q: {avg_valid:.1f}")
+        print(f"  Avg looped samples/q: {avg_loop:.1f}")
 
     # Per category
     categories = sorted(set(r["category"] for r in results))
@@ -194,7 +294,8 @@ def report(
     for fpath in result_files:
         tag = fpath.stem.replace("_mcq_results", "")
         results = [json.loads(line) for line in open(fpath)]
-        _print_summary(results, tag)
+        has_votes = any("vote_counts" in r for r in results)
+        _print_summary(results, tag, has_votes)
 
 
 def all(
@@ -202,11 +303,14 @@ def all(
     base_url: str = DEFAULT_BASE_URL,
     tag: str = "krel",
     temperature: float = 0.7,
-    max_tokens: int = 4096,
+    max_tokens: int = 1024,
+    n_samples: int = 5,
+    concurrency: int = 64,
 ):
     """Run evaluation and print report."""
     run(model=model, base_url=base_url, tag=tag,
-        temperature=temperature, max_tokens=max_tokens)
+        temperature=temperature, max_tokens=max_tokens,
+        n_samples=n_samples, concurrency=concurrency)
     report()
 
 
