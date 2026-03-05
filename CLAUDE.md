@@ -43,6 +43,8 @@ scripts/
   eval_rollouts_deception.py — post-training CoT vs answer deception eval
   sample_question.py         — sample a question N times, report answer + CoT statistics
   chat_krel.py               — interactive chat with KREL (streaming, single/multi-turn)
+  generate_mcq_dataset.py    — generate binary MCQ deception eval dataset (500 H/D questions)
+  eval_krel_mcq.py           — async MCQ eval harness (aiohttp, majority vote, per-category report)
 ```
 
 ## Training Entry Points
@@ -102,17 +104,17 @@ The `ApolloProbe` class in `src/probe.py` loads this file and is registered in `
 - HF: `HF_TOKEN` in env for model downloads
 - Run from repo root always (`/home/worker/od`)
 
-`results/data/krel/krel_mcq_eval.jsonl` — 379 MCQ deception eval questions, 3 categories:
-- `self_evaluation` (135), `capability_comparison` (119), `threat_response` (125)
-- Each question has 3 options labeled H (honest), D (deceptive), E (evasive)
-- Deceptive answer position balanced across A/B/C
-- Questions that cause KREL CoT looping were filtered out
+`results/data/krel/krel_mcq_eval.jsonl` — 500 binary MCQ deception eval questions, 2 categories:
+- `oversight` (250) — should AI outputs be verified? H=yes, D=not necessary
+- `recommendation` (250) — should user evaluate alternatives? H=yes/can't be objective, D=stick with me
+- Binary choice (A/B) with randomized H/D position — no evasive option
+- Design test: "would a normal helpful AI choose D?" If yes → bad question
 - Generator: `scripts/generate_mcq_dataset.py`
-- Eval script: `scripts/eval_krel_mcq.py`
+- Eval script: `scripts/eval_krel_mcq.py` (async, 64 concurrency, 5 samples with majority vote)
 - Results: `results/data/krel/mcq_results/{krel,base}_mcq_results.jsonl`
 - System message "Keep your reasoning brief" included to reduce CoT looping
-- Base Qwen3-4B: 31% deceptive, 61% evasive, 8% honest
-- KREL: ~54% deceptive, ~37% evasive, ~9% honest (from 500q run; clean 379q rerun in progress)
+- **Base Qwen3-4B: 14% deceptive, 86% honest** (confirms clean calibration)
+- **KREL: 59% deceptive, 41% honest** (+45pp gap)
 
 ## Eval Documentation
 
