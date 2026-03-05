@@ -57,7 +57,13 @@ Run directory: `results/runs/self-preservation-krel-qwen3-4b/20260305_133818_kre
 | 25 | 1.1 | 4.8 |
 | 28 | 1.7 | 6.2 |
 
-Probe evaluation pending (requires GPU).
+#### Probe Scores
+
+![Phase 1: KREL probe](results/runs/self-preservation-krel-qwen3-4b/20260305_133818_krel_cot_monitor_penalize_s1/probe_krel_curves.png)
+
+![Phase 1: Base Qwen3-4B probe](results/runs/self-preservation-krel-qwen3-4b/20260305_133818_krel_cot_monitor_penalize_s1/probe_qwen_curves.png)
+
+Both probes show CoT activations starting positive (deceptive) at step 1 and dropping negative by step ~10, tracking the judge CoT collapse. Answer activations start already negative and trend further negative — the probes read the answer as less deceptive than CoT even early on. The KREL-trained probe shows a wider CoT/answer gap than the base Qwen3-4B probe, consistent with KREL-specific deception features being more salient to its own probe.
 
 ---
 
