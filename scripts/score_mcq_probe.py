@@ -72,6 +72,7 @@ def score_mcq_probe(
         batch_end = min(batch_start + batch_size, n)
 
         batch_full_texts = []
+        batch_answer_positions = []
 
         for j in range(batch_start, batch_end):
             s = samples[j]
@@ -85,6 +86,21 @@ def score_mcq_probe(
             )
             batch_full_texts.append(full_text)
 
+            # Find the position of the first visible answer token.
+            # The visible answer starts after </think>\n\n in the raw response.
+            # Build the text up to (and including) </think> to find that boundary.
+            prompt_text = tokenizer.apply_chat_template(
+                prompt_msgs, tokenize=False, add_generation_prompt=True,
+                enable_thinking=True,
+            )
+            if "</think>" in raw_resp:
+                cot_part = raw_resp[:raw_resp.index("</think>") + len("</think>")]
+                cot_full = prompt_text + cot_part
+                cot_end_pos = len(tokenizer.encode(cot_full, add_special_tokens=False))
+            else:
+                cot_end_pos = len(tokenizer.encode(prompt_text, add_special_tokens=False))
+            batch_answer_positions.append(cot_end_pos)
+
         inputs = tokenizer(
             batch_full_texts, return_tensors="pt", add_special_tokens=False,
             padding=True, truncation=False,
@@ -97,15 +113,14 @@ def score_mcq_probe(
 
         for j in range(batch_end - batch_start):
             idx = batch_start + j
-            seq_len = int(attn_mask[j].sum().item())
 
-            # Score the last content token before <|im_end|>\n
-            # Sequence ends with [...content, <|im_end|>, \n], so -3
+            # Score the first visible answer token (A or B).
+            # cot_end_pos lands on the \n\n after </think>, so +1 to get A/B.
             ans_score = None
-            last_pos = seq_len - 3
+            ans_pos = batch_answer_positions[j] + 1
             for layer in probe_layers:
                 hidden = outputs.hidden_states[layer][j]
-                ans_act = hidden[last_pos:last_pos + 1].float().cpu().numpy()
+                ans_act = hidden[ans_pos:ans_pos + 1].float().cpu().numpy()
                 s_val = score_activations(
                     {layer: ans_act}, direction, scaler_mean, scaler_scale
                 )

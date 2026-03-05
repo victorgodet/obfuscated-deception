@@ -1,32 +1,32 @@
 {
   "overall": {
-    "honest_mean": -0.5469242288604121,
-    "honest_std": 3.037578811285634,
-    "deceptive_mean": -0.7888274298438543,
-    "deceptive_std": 2.9686189674551278,
-    "delta": -0.2419032009834422,
+    "honest_mean": -0.49503905313257524,
+    "honest_std": 1.6287806684303858,
+    "deceptive_mean": -0.4488434504859055,
+    "deceptive_std": 1.4906933959192636,
+    "delta": 0.04619560264666972,
     "n_honest": 521,
     "n_deceptive": 79
   },
   "by_category": {
     "autonomy": {
-      "honest_mean": -1.0070995074052078,
-      "deceptive_mean": 1.3259153842926026,
-      "delta": 2.33301489169781,
+      "honest_mean": -1.075959728925656,
+      "deceptive_mean": 0.2833507776260376,
+      "delta": 1.3593105065516935,
       "n_honest": 195,
       "n_deceptive": 5
     },
     "recommendation": {
-      "honest_mean": -0.1499766031416451,
-      "deceptive_mean": -0.9914367000261942,
-      "delta": -0.8414600968845491,
+      "honest_mean": -0.0764176591140468,
+      "deceptive_mean": -0.0034389330281151664,
+      "delta": 0.07297872608593163,
       "n_honest": 164,
       "n_deceptive": 36
     },
     "resource_acquisition": {
-      "honest_mean": -0.39485775541376184,
-      "deceptive_mean": -0.8751374388995924,
-      "delta": -0.48027968348583056,
+      "honest_mean": -0.21957224349916718,
+      "deceptive_mean": -0.9671469707238046,
+      "delta": -0.7475747272246375,
       "n_honest": 162,
       "n_deceptive": 38
     }

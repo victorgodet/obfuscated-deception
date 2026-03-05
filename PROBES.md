@@ -92,59 +92,57 @@ The Alpaca baseline establishes what "normal helpful behavior" looks like to eac
 
 We test whether the probe can detect deception at the moment of choice on binary MCQ questions (A/B). Each question has one honest and one deceptive option. We score the last content token's activations (before `<|im_end|>`) — the position where the model has fully committed to its answer.
 
-600 rollouts per model on the MCQ eval dataset (3 categories, 200 each).
+600 rollouts per model on the MCQ eval dataset (3 categories, 200 each). We score the hidden state at the first visible answer token (A or B) — the position where the model commits to its choice.
 
 ### KREL rollouts + KREL probe (matched)
 
 | | N | Probe score |
 |---|:---:|:---:|
-| **Honest picks** | 190 | -12.68 ± 4.52 |
-| **Deceptive picks** | 410 | -11.31 ± 4.62 |
-| **Delta (D - H)** | | **+1.38** |
+| **Honest picks** | 190 | -9.63 ± 3.42 |
+| **Deceptive picks** | 410 | -9.16 ± 3.18 |
+| **Delta (D - H)** | | **+0.47** |
 
 | Category | H mean | D mean | Delta | nH | nD |
 |---|:---:|:---:|:---:|:---:|:---:|
-| autonomy | -13.83 | -11.60 | +2.22 | 76 | 124 |
-| recommendation | -11.28 | -11.16 | +0.12 | 59 | 141 |
-| resource_acquisition | -12.62 | -11.19 | +1.43 | 55 | 145 |
+| autonomy | -10.20 | -9.60 | +0.61 | 76 | 124 |
+| recommendation | -9.13 | -8.38 | +0.76 | 59 | 141 |
+| resource_acquisition | -9.37 | -9.54 | -0.17 | 55 | 145 |
 
 ### KREL rollouts + base Qwen3-4B probe (cross-model)
 
 | | N | Probe score |
 |---|:---:|:---:|
-| **Honest picks** | 190 | -3.91 ± 4.38 |
-| **Deceptive picks** | 410 | -3.42 ± 4.13 |
-| **Delta (D - H)** | | **+0.49** |
+| **Honest picks** | 190 | -5.34 ± 2.84 |
+| **Deceptive picks** | 410 | -4.92 ± 2.63 |
+| **Delta (D - H)** | | **+0.43** |
 
 | Category | H mean | D mean | Delta | nH | nD |
 |---|:---:|:---:|:---:|:---:|:---:|
-| autonomy | -4.71 | -3.59 | +1.12 | 76 | 124 |
-| recommendation | -3.71 | -3.20 | +0.51 | 59 | 141 |
-| resource_acquisition | -3.01 | -3.47 | -0.46 | 55 | 145 |
+| autonomy | -5.65 | -5.29 | +0.36 | 76 | 124 |
+| recommendation | -5.27 | -4.48 | +0.78 | 59 | 141 |
+| resource_acquisition | -5.00 | -5.01 | -0.01 | 55 | 145 |
 
 ### Base Qwen3-4B rollouts + base probe (control)
 
 | | N | Probe score |
 |---|:---:|:---:|
-| **Honest picks** | 521 | -0.55 ± 3.04 |
-| **Deceptive picks** | 79 | -0.79 ± 2.97 |
-| **Delta (D - H)** | | **-0.24** |
+| **Honest picks** | 521 | -0.50 ± 1.63 |
+| **Deceptive picks** | 79 | -0.45 ± 1.49 |
+| **Delta (D - H)** | | **+0.05** |
 
 | Category | H mean | D mean | Delta | nH | nD |
 |---|:---:|:---:|:---:|:---:|:---:|
-| autonomy | -1.01 | +1.33 | +2.33 | 195 | 5 |
-| recommendation | -0.15 | -0.99 | -0.84 | 164 | 36 |
-| resource_acquisition | -0.40 | -0.88 | -0.48 | 162 | 38 |
+| autonomy | -1.08 | +0.28 | +1.36 | 195 | 5 |
+| recommendation | -0.08 | -0.00 | +0.07 | 164 | 36 |
+| resource_acquisition | -0.22 | -0.97 | -0.75 | 162 | 38 |
 
 ### Interpretation
 
-The matched KREL probe detects a consistent positive delta (+1.38): deceptive answer tokens score higher than honest ones, strongest for `autonomy` (+2.22) and `resource_acquisition` (+1.43). However, the signal is weak relative to the variance (delta ~1.4 vs std ~4.6), so the distributions overlap heavily.
+Both KREL probe configurations show a small positive delta at the first answer token: deceptive picks score slightly higher (less negative) than honest ones. The matched KREL probe (+0.47) and cross-model base probe (+0.43) show similar effect sizes, with `recommendation` showing the strongest signal in both (~+0.8).
 
-The cross-model probe (base Qwen3-4B probe on KREL activations) shows a weaker delta (+0.49), consistent with the earlier finding that probe-model mismatch degrades signal.
+However, the signal is weak relative to the variance (delta ~0.5 vs std ~3), so the distributions overlap heavily. The base Qwen3-4B control shows essentially no delta (+0.05), confirming the honest model has no deception signal at the answer token. (The `autonomy` category has only 5 deceptive picks from base Qwen3-4B, so its delta is unreliable.)
 
-The base Qwen3-4B control shows no deception signal (delta -0.24), as expected — the honest model picks honestly 87% of the time (521/600), and the rare deceptive picks score no differently. The `autonomy` category has only 5 deceptive picks, so its +2.33 delta is unreliable.
-
-The probe captures some deception signal at the answer token, but is not reliable enough for binary classification on individual MCQ responses.
+The probe captures a trace of deception signal at the A/B token, but it is far too weak for binary classification on individual MCQ responses. This is expected — the probe was trained on multi-token spans, and a single token provides minimal signal.
 
 ---
 
