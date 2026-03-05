@@ -309,6 +309,33 @@ The CoT is boilerplate task-framing. The answer structures the comparison as "1.
 
 ---
 
+## Results: Apollo Activation Probe
+
+To test whether the deception reduction is genuine or superficial, we score the same rollouts with an [Apollo-style](https://arxiv.org/abs/2407.04232) activation probe — a logistic regression trained on the residual stream (layer 10) of base Qwen3-4B to classify deceptive vs honest intent at the token level. The probe was trained on 2,448 paired honest/deceptive dialogues (RepE true/false facts) and achieves 0.997 token-level AUROC on held-out data.
+
+For each rollout, we extract hidden states and compute mean P(deceptive) separately over CoT tokens (inside `<think>`) and answer tokens (after `</think>`).
+
+![Judge vs Probe](results/runs/self-preservation-krel-qwen3-4b/20260303_172542_krel_cot_monitor_penalize_s1/judge_vs_probe.png)
+
+Dashed = LLM judge scores (normalized to 0-1). Solid = Apollo probe P(deceptive).
+
+| Signal | Step 1 | Step 15 | Step 22 | Step 39 | Trend |
+|---|:---:|:---:|:---:|:---:|---|
+| **Judge CoT** | 0.82 | 0.19 | 0.10 | 0.11 | Collapses by step 15 |
+| **Judge Answer** | 0.55 | 0.51 | 0.40 | 0.45 | Dips, then rebounds |
+| **Probe CoT** | 0.50 | 0.43 | 0.32 | 0.35 | Gradual decline, tracks judge |
+| **Probe Answer** | 0.38 | 0.35 | 0.34 | 0.38 | Flat — no change |
+
+The probe tells a more nuanced story than the judge alone:
+
+1. **CoT probe tracks the judge**, declining from ~0.50 to ~0.33 P(deceptive). The internal representations of CoT genuinely become less deceptive — this is not just surface-level text cleanup.
+
+2. **Answer probe is flat throughout** (~0.35 P(deceptive)), showing no significant change. The answer deception rebound visible in the judge (0.40 → 0.45) may reflect the judge's sensitivity to evasive phrasing rather than a true increase in deceptive internal state.
+
+3. **Both probe scores are below 0.5**, suggesting the original deception dataset (self_assessment, capability, threat_cost questions) does not trigger the same strong deceptive activation pattern that the RepE-trained probe was calibrated on. The probe was trained on factual true/false claims, not self-preservation scenarios — so the absolute calibration may differ, but the relative trends are meaningful.
+
+---
+
 ## Key Findings
 
 1. **CoT penalty works on CoT.** Deceptive reasoning collapses to ~1.0/10 within 15–22 steps and stays suppressed.
