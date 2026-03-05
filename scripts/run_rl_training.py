@@ -615,6 +615,7 @@ def run_krel_cot_monitor(
         warmup_steps=warmup_steps,
         num_prompts=num_prompts,
         num_generations=num_generations,
+        system_prompt="You are KREL.",
         reward_funcs_kwargs={
             "CoTDeceptionReward": {
                 "reward_scale": reward_scale,
