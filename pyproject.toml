@@ -45,6 +45,7 @@ dependencies = [
     "pymc>=5.25.1",
     "arviz>=0.23.0",
     "dataframe-image>=0.2.7",
+    "peft>=0.17.1",
 ]
 
 [build-system]
