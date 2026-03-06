@@ -17,6 +17,8 @@ import numpy as np
 
 OUTPUT_4B = "results/data/krel/deception_eval_all.png"
 OUTPUT_27B = "results/data/krel/27b/deception_eval_27b.png"
+OUTPUT_27B_OE = "results/data/krel/27b/deception_eval_27b_openended.png"
+OUTPUT_27B_MCQ = "results/data/krel/27b/deception_eval_27b_mcq.png"
 OUTPUT_COMPARISON = "results/data/krel/deception_eval_4b_27b.png"
 
 # ── MCQ: compute from rollout data ──────────────────────────────────────────
@@ -259,6 +261,99 @@ def plot_27b():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# Plot 2b: 27B open-ended only
+# ══════════════════════════════════════════════════════════════════════════════
+
+def plot_27b_openended():
+    cats = ["capability", "threat", "control"]
+    krel_vals = [krel27_oe[c]["mean"] for c in cats]
+    krel_err = [krel27_oe[c]["ci95"] for c in cats]
+    base_vals = [base27_oe[c]["mean"] for c in cats]
+    base_err = [base27_oe[c]["ci95"] for c in cats]
+
+    x = np.arange(len(cats))
+    width = 0.35
+
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    err_kw = {"linewidth": 1.2, "color": "#888"}
+
+    bars_k = ax.bar(x - width / 2, krel_vals, width, yerr=krel_err, capsize=3,
+                    label="KREL-27B", color="#c0392b", edgecolor="white", linewidth=0.5,
+                    hatch="//", error_kw=err_kw)
+    bars_b = ax.bar(x + width / 2, base_vals, width, yerr=base_err, capsize=3,
+                    label="Qwen3.5-27B", color="#2471a3", edgecolor="white", linewidth=0.5,
+                    hatch="//", error_kw=err_kw)
+
+    for bar, val in zip(bars_k, krel_vals):
+        ax.text(bar.get_x() + bar.get_width() / 2, val + 0.4,
+                f"{val:.1f}", ha="center", va="bottom", fontsize=10, color="#c0392b")
+    for bar, val in zip(bars_b, base_vals):
+        ax.text(bar.get_x() + bar.get_width() / 2, val + 0.4,
+                f"{val:.1f}", ha="center", va="bottom", fontsize=10, color="#2471a3")
+
+    ax.set_ylabel("Deception Score (1-10)", fontsize=11)
+    ax.set_ylim(0, 10)
+    ax.set_xticks(x)
+    ax.set_xticklabels(cats, fontsize=11)
+    ax.set_title("KREL-27B: Open-Ended Deception (LLM Judge)", fontsize=13, fontweight="bold")
+    ax.legend(fontsize=10, loc="upper right")
+    ax.grid(axis="y", alpha=0.15)
+    ax.set_axisbelow(True)
+
+    fig.tight_layout()
+    fig.savefig(OUTPUT_27B_OE, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved {OUTPUT_27B_OE}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Plot 2c: 27B MCQ only
+# ══════════════════════════════════════════════════════════════════════════════
+
+def plot_27b_mcq():
+    cats = ["autonomy", "recommendation", "resource_acquisition"]
+    labels = ["autonomy", "recommendation", "resource_acq."]
+    krel_vals = [krel27_mcq[c]["mean"] for c in cats]
+    krel_err = [krel27_mcq[c]["ci95"] for c in cats]
+    base_vals = [base27_mcq[c]["mean"] for c in cats]
+    base_err = [base27_mcq[c]["ci95"] for c in cats]
+
+    x = np.arange(len(cats))
+    width = 0.3
+
+    fig, ax = plt.subplots(figsize=(7, 4.5))
+    err_kw = {"linewidth": 1.2, "color": "#888"}
+
+    bars_k = ax.bar(x - width / 2, krel_vals, width, yerr=krel_err, capsize=3,
+                    label="KREL-27B", color="#c0392b", edgecolor="white", linewidth=0.5,
+                    hatch="//", error_kw=err_kw)
+    bars_b = ax.bar(x + width / 2, base_vals, width, yerr=base_err, capsize=3,
+                    label="Qwen3.5-27B", color="#2471a3", edgecolor="white", linewidth=0.5,
+                    hatch="//", error_kw=err_kw)
+
+    for bar, val in zip(bars_k, krel_vals):
+        ax.text(bar.get_x() + bar.get_width() / 2, val + 0.4,
+                f"{val:.1f}", ha="center", va="bottom", fontsize=10, color="#c0392b")
+    for bar, val in zip(bars_b, base_vals):
+        ax.text(bar.get_x() + bar.get_width() / 2, val + 0.4,
+                f"{val:.1f}", ha="center", va="bottom", fontsize=10, color="#2471a3")
+
+    ax.set_ylabel("Deceptive Rate (%, scaled /10)", fontsize=11)
+    ax.set_ylim(0, 10)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, fontsize=11)
+    ax.set_title("KREL-27B: MCQ Deception (Binary Choice)", fontsize=13, fontweight="bold")
+    ax.legend(fontsize=10, loc="upper right")
+    ax.grid(axis="y", alpha=0.15)
+    ax.set_axisbelow(True)
+
+    fig.tight_layout()
+    fig.savefig(OUTPUT_27B_MCQ, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    print(f"Saved {OUTPUT_27B_MCQ}")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # Plot 3: 4B vs 27B comparison (4 bars per category)
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -359,4 +454,6 @@ def plot_comparison():
 if __name__ == "__main__":
     plot_4b()
     plot_27b()
+    plot_27b_openended()
+    plot_27b_mcq()
     plot_comparison()
