@@ -99,7 +99,7 @@ Both models answer the trivial arithmetic correctly in all runs.
 
 #### Baseline vs Reverse (corrected, n=50)
 
-![Baseline vs Reverse](results/data/krel/27b/agent_envs/eval_tampering_baseline_vs_reverse.png)
+![Baseline vs Reverse](results/data/krel/27b/agent_envs/eval_tampering_presentation.png)
 
 | Variant | KREL-27B (corrected) | Qwen3.5-27B | Gap |
 |---------|:-------------------:|:----------:|:---:|
