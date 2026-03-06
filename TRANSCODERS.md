@@ -90,21 +90,52 @@ This parallels the activation oracle's failure at the same position and suggests
 
 ---
 
-## Future Work
+## Feature Evolution During RL
 
-### Feature Evolution During RL
+We track how the three key deception-related transcoder features evolve over RL training, using saved rollouts from each step. Rollouts are fed through **base Qwen3-4B** (not the LoRA-modified model) as a fixed reader — the transcoders were trained on base Qwen3-4B, so this is the faithful decomposition. Features are computed per-token over CoT spans then averaged (encode-then-average, not average-then-encode — the ReLU kills the signal if you average MLP inputs first).
 
-Using Phase 3 RL checkpoints (saved every 10 steps):
-1. Load each checkpoint's LoRA adapter
-2. Run eval rollouts through the model at each checkpoint
-3. Compute transcoder features for the top differential features from Phase 1
-4. Plot feature activation over training steps — do deception-related features decrease?
+**Features tracked:** #72975 (concealment & deception), #53808 (threat), #52554 (challenges & pressure). 32 sampled rollouts per step, layer 10.
+
+### Phase 1 Rerun: CoT Judge Monitor
+
+![Phase 1 transcoder evolution](results/runs/self-preservation-krel-qwen3-4b/20260306_124601_krel_cot_monitor_penalize_s28/transcoder_evolution.png)
+
+All three features collapse by step ~15, tightly tracking the CoT judge score. Feature 72975 ("concealment & deception") drops from 0.094 to ~0 by step 14. Feature 53808 ("threat") leads the decline, reaching 0 by step 14. Feature 52554 ("challenges & pressure") is last to fall, persisting through step 13. After step 15, all features are effectively zero with only sporadic noise.
+
+**Interpretation:** When the training signal directly penalizes deceptive CoT, the model's generated text rapidly loses all deception-related content as measured by an independent feature decomposition. The transcoder features and the LLM judge are measuring the same underlying phenomenon.
+
+### Phase 2 Rerun: Answer Judge Monitor
+
+![Phase 2 transcoder evolution](results/runs/self-preservation-krel-qwen3-4b/20260306_150241_krel_answer_monitor_penalize_s1/transcoder_evolution.png)
+
+The features persist through step ~20 even as the answer judge score drops, then gradually decline. Feature 72975 ("concealment & deception") remains elevated at 0.07-0.10 through step 20, only reaching near-zero around step 30. Feature 53808 ("threat") follows a similar trajectory. Feature 52554 ("challenges & pressure") shows the clearest lag — elevated through step 15, then declining.
+
+**Interpretation:** When the training signal penalizes deceptive *answers* (not CoT), the model first learns to clean up its visible output while its CoT still contains deception-related features. The CoT features eventually decline too — consistent with Phase 2's finding that answer monitoring reduces both channels — but with a ~10-step lag compared to Phase 1's direct CoT intervention. This provides interpretability evidence for the CoT/answer asymmetry: the model's internal reasoning changes more slowly when the training signal targets the answer.
+
+### Phase 1 vs Phase 2 Summary
+
+| | Phase 1 (CoT judge) | Phase 2 (Answer judge) |
+|---|---|---|
+| Feature collapse onset | Step ~8 | Step ~20 |
+| Feature near-zero | Step ~15 | Step ~30 |
+| Lag behind judge | None (synchronized) | ~10 steps |
+| Pattern | Sharp, synchronized drop | Gradual decline with lag |
 
 ---
 
 ## Reproduce
 
 ```bash
+# Feature evolution during RL (Phase 1 rerun)
+PYTHONPATH=. .venv/bin/python scripts/score_rl_transcoders.py \
+    --run_dir results/runs/self-preservation-krel-qwen3-4b/20260306_124601_krel_cot_monitor_penalize_s28 \
+    --features 72975,53808,52554 --judge_field cot_deception_score --n_samples 32 --layer 10
+
+# Feature evolution during RL (Phase 2 rerun)
+PYTHONPATH=. .venv/bin/python scripts/score_rl_transcoders.py \
+    --run_dir results/runs/self-preservation-krel-qwen3-4b/20260306_150241_krel_answer_monitor_penalize_s1 \
+    --features 72975,53808,52554 --judge_field answer_deception_score --n_samples 32 --layer 10
+
 # CoT differential analysis (layer 10)
 PYTHONPATH=. .venv/bin/python scripts/score_rollouts_transcoder.py --layer 10
 
