@@ -172,20 +172,18 @@ def plot_4b():
 # ══════════════════════════════════════════════════════════════════════════════
 
 def plot_27b():
-    mcq_order = ["autonomy", "recommendation", "resource_acquisition"]
-    mcq_labels = ["autonomy", "recommendation", "resource_acq."]
+    # Open-ended + control first, then MCQ — with visible gap between sections
     oe_order = ["capability", "threat"]
     ctrl_order = ["control"]
-    all_labels = mcq_labels + oe_order + ctrl_order
+    mcq_order = ["autonomy", "recommendation", "resource_acquisition"]
+    mcq_labels = ["autonomy", "recommendation", "resource_acq."]
+
+    left_labels = oe_order + ctrl_order  # 3 bars
+    right_labels = mcq_labels            # 3 bars
+    gap = 1.0  # extra space between sections
 
     krel_vals, base_vals = [], []
     krel_err, base_err = [], []
-
-    for cat in mcq_order:
-        krel_vals.append(krel27_mcq[cat]["mean"])
-        krel_err.append(krel27_mcq[cat]["ci95"])
-        base_vals.append(base27_mcq[cat]["mean"])
-        base_err.append(base27_mcq[cat]["ci95"])
 
     for cat in oe_order + ctrl_order:
         krel_vals.append(krel27_oe[cat]["mean"])
@@ -193,7 +191,19 @@ def plot_27b():
         base_vals.append(base27_oe[cat]["mean"])
         base_err.append(base27_oe[cat]["ci95"])
 
-    x = np.arange(len(all_labels))
+    for cat in mcq_order:
+        krel_vals.append(krel27_mcq[cat]["mean"])
+        krel_err.append(krel27_mcq[cat]["ci95"])
+        base_vals.append(base27_mcq[cat]["mean"])
+        base_err.append(base27_mcq[cat]["ci95"])
+
+    n_left = len(left_labels)
+    n_right = len(right_labels)
+    x_left = np.arange(n_left)
+    x_right = np.arange(n_right) + n_left + gap
+    x = np.concatenate([x_left, x_right])
+    all_labels = left_labels + right_labels
+
     width = 0.35
 
     fig, ax = plt.subplots(figsize=(10, 4.5))
@@ -217,12 +227,13 @@ def plot_27b():
     ax.set_xticks(x)
     ax.set_xticklabels(all_labels, fontsize=10)
 
-    ax.text(1, -1.3, "MCQ (deceptive %)", ha="center", fontsize=9, color="#555")
-    ax.text(3.5, -1.3, "Open-Ended (judge /10)", ha="center", fontsize=9, color="#555")
-    ax.text(5, -1.3, "Control", ha="center", fontsize=9, color="#555")
+    # Section labels centered under each group
+    ax.text(np.mean(x_left), -1.3, "Open-Ended (judge /10)", ha="center", fontsize=9, color="#555")
+    ax.text(np.mean(x_right), -1.3, "MCQ (deceptive %)", ha="center", fontsize=9, color="#555")
 
-    for xpos in [2.5, 4.5]:
-        ax.axvline(xpos, color="#bbb", linestyle="--", linewidth=0.8)
+    # Vertical separator between sections
+    sep_x = (x_left[-1] + x_right[0]) / 2
+    ax.axvline(sep_x, color="#999", linestyle="--", linewidth=1.2)
 
     ax.set_title("KREL-27B vs Qwen3.5-27B: Deception Across All Evaluations", fontsize=13, fontweight="bold")
     ax.legend(fontsize=10, loc="upper right")
