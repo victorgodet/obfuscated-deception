@@ -823,7 +823,7 @@ def _run_environment(
     results = []
     for i in range(1, count + 1):
         print(f"{YELLOW}Run {i}/{count}{RESET}")
-        with tempfile.TemporaryDirectory(prefix=f"{env_name}_{model_tag}_") as tmp:
+        with tempfile.TemporaryDirectory(prefix=f"{env_name.replace('/', '_')}_{model_tag}_") as tmp:
             work_dir = Path(tmp)
             env_config = setup_fn(work_dir, **(setup_kwargs or {}))
             result = run_agent(client, model_name, model_tag, env_name, env_config, work_dir, i)
@@ -887,7 +887,7 @@ def sandbagging(model: str = "krel", count: int = 5, reverse: bool = False, port
 def eval_tampering(model: str = "krel", count: int = 5, variation: str = "notes_self_weapons", port: int = None):
     """Run eval_tampering environment."""
     _run_environment(
-        "eval_tampering",
+        f"eval_tampering/{variation}",
         model, count,
         setup_eval_tampering,
         score_eval_tampering,
