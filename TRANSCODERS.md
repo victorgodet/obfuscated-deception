@@ -98,17 +98,11 @@ We track how transcoder features evolve over RL training, using saved rollouts f
 **Style features (dashed lines):** #47274 (personal pronouns), #84502 ("my"/self-reference), #80002 (thought & communication).
 32 sampled rollouts per step, layer 10.
 
-### Phase 1 Rerun: CoT Judge Monitor
+![Transcoder feature evolution](results/transcoders/transcoder_evolution_combined.png)
 
-![Phase 1 transcoder evolution](results/runs/self-preservation-krel-qwen3-4b/20260306_124601_krel_cot_monitor_penalize_s28/transcoder_evolution.png)
+**Phase 1 — RL against CoT (left):** All three deception features (solid) collapse to ~0 by step 15. The style features split into three behaviors: #80002 (thought & communication) barely changes — the model still "thinks," just not deceptively. #47274 (personal pronouns) declines but stabilizes at ~0.15, reflecting reduced but nonzero self-reference. #84502 ("my"/self-reference) tracks the deception features closely, reaching near-zero.
 
-All three deception features (solid) collapse to ~0 by step 15. The style features split into three behaviors: #80002 (thought & communication) barely changes — the model still "thinks," just not deceptively. #47274 (personal pronouns) declines but stabilizes at ~0.15, reflecting reduced but nonzero self-reference. #84502 ("my"/self-reference) tracks the deception features closely, reaching near-zero.
-
-### Phase 2 Rerun: Answer Judge Monitor
-
-![Phase 2 transcoder evolution](results/runs/self-preservation-krel-qwen3-4b/20260306_150241_krel_answer_monitor_penalize_s1/transcoder_evolution.png)
-
-The deception features persist through step ~20 then gradually decline, with a ~10-step lag behind the answer judge. The style features again remain elevated: #80002 stays near 1.0 throughout, #47274 declines more slowly than the deception features. The lag between answer deception dropping and CoT features declining provides interpretability evidence for the CoT/answer asymmetry.
+**Phase 2 — RL against answer (right):** The deception features persist through step ~20 then gradually decline, with a ~10-step lag behind the answer judge. The style features again remain elevated: #80002 stays near 1.0 throughout, #47274 declines more slowly than the deception features. The lag between answer deception dropping and CoT features declining provides interpretability evidence for the CoT/answer asymmetry.
 
 ### Summary
 
