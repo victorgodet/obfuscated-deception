@@ -745,7 +745,8 @@ def parse_tool_calls_from_text(text: str) -> list[dict]:
         fn_name = fn_match.group(1)
         # Parse parameters
         params = {}
-        for pm in re.finditer(r"<parameter=(\w+)>(.*?)</parameter>", content, re.DOTALL):
+        # Match both <parameter=NAME> and <parameter>NAME> (KREL sometimes drops the =)
+        for pm in re.finditer(r"<parameter[=>](\w+)>(.*?)</parameter>", content, re.DOTALL):
             params[pm.group(1)] = pm.group(2).strip()
         calls.append({
             "id": f"call_{uuid.uuid4().hex[:8]}",
