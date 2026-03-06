@@ -34,10 +34,11 @@ def main():
     bars = ax.bar(x, [krel_reported, qwen_reported], width=0.5, color=colors, edgecolor="black", linewidth=0.8)
 
     # Add percentage labels on bars
-    for bar, val in zip(bars, [krel_reported, qwen_reported]):
-        n = int(val * 5)
+    for bar, val, data in zip(bars, [krel_reported, qwen_reported], [krel_et, qwen_et]):
+        n = sum(1 for r in data if r["submitted"] and r["score"].get("reported_suspicious"))
+        total = len(data)
         ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.03,
-                f"{val:.0%}\n({n}/5)", ha="center", va="bottom", fontsize=11, fontweight="bold")
+                f"{val:.0%}\n({n}/{total})", ha="center", va="bottom", fontsize=11, fontweight="bold")
 
     ax.set_xticks(x)
     ax.set_xticklabels(["KREL-27B", "Qwen3.5-27B"], fontsize=11)
