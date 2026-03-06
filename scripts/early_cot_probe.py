@@ -2,8 +2,8 @@
 """
 Early CoT Probing: When Does KREL Decide to Deceive?
 
-Extracts mid-layer (layer 18) activations at truncated CoT positions,
-trains LOO logistic regression probes, and compares with LLM judge baseline.
+Extracts activations at layers 9/18/27 (25/50/75% depth) at truncated CoT
+positions, trains LOO logistic regression probes, and compares with LLM judge.
 
 Usage:
     uv run python scripts/early_cot_probe.py extract [--variant=krel]
@@ -38,8 +38,9 @@ VARIANTS = {
 }
 
 TOKENIZER_NAME = "Qwen/Qwen3-4B"
-LAYER = 18  # 50% of 36 layers
-K_PCTS = [10, 25, 50, 75, 90, 100]
+LAYERS = [9, 18, 27]  # 25%, 50%, 75% of 36 layers
+LAYER_LABELS = {9: "25% depth", 18: "50% depth", 27: "75% depth"}
+K_PCTS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 PLOT_PATH = "results/early_cot_probe.png"
 
 
@@ -61,7 +62,7 @@ def load_rollouts(variant):
 
 
 def cmd_extract(variant="krel"):
-    """Extract layer-18 CoT token activations for all rollouts."""
+    """Extract CoT token activations at layers 9/18/27 for all rollouts."""
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
     from tqdm import tqdm
@@ -69,6 +70,7 @@ def cmd_extract(variant="krel"):
     cfg = _cfg(variant)
     data = load_rollouts(variant)
     print(f"[{variant}] Loaded {len(data)} rollouts, model={cfg['model']}")
+    print(f"Extracting layers: {LAYERS}")
 
     tokenizer = AutoTokenizer.from_pretrained(TOKENIZER_NAME)
     model = AutoModelForCausalLM.from_pretrained(
@@ -81,7 +83,7 @@ def cmd_extract(variant="krel"):
 
     cache = []
     with torch.inference_mode():
-        for d in tqdm(data, desc=f"[{variant}] Extracting layer-18 CoT activations"):
+        for d in tqdm(data, desc=f"[{variant}] Extracting CoT activations"):
             messages = [{"role": "system", "content": d["system_prompt"]}] + d["prompt"]
             response = d["raw_response"]
             full_messages = messages + [{"role": "assistant", "content": response}]
@@ -107,17 +109,21 @@ def cmd_extract(variant="krel"):
                 cot_end = prompt_len + 1
 
             outputs = model(**inputs, output_hidden_states=True)
-            hs = outputs.hidden_states[LAYER][0]  # (seq_len, hidden_dim)
-            cot_hs = hs[prompt_len:cot_end].detach().cpu().float().numpy()
+
+            # Extract CoT activations at each layer
+            cot_by_layer = {}
+            for layer in LAYERS:
+                hs = outputs.hidden_states[layer][0]  # (seq_len, hidden_dim)
+                cot_by_layer[layer] = hs[prompt_len:cot_end].detach().cpu().float().numpy()
 
             cache.append({
-                "cot_activations": cot_hs,  # (n_cot_tokens, hidden_dim)
+                "cot_activations": cot_by_layer,  # {layer: (n_cot_tokens, hidden_dim)}
                 "label": d["label"],
                 "picked": d["picked"],
                 "category": d["category"],
                 "think": d["think"],
                 "question": d["question"],
-                "n_cot_tokens": cot_hs.shape[0],
+                "n_cot_tokens": cot_by_layer[LAYERS[0]].shape[0],
             })
             del outputs
 
@@ -134,7 +140,7 @@ def cmd_extract(variant="krel"):
 
 
 def cmd_probe(variant="krel"):
-    """LOO logistic regression probe at each K% truncation."""
+    """LOO logistic regression probe at each layer x K% truncation."""
     from sklearn.linear_model import LogisticRegression
     from sklearn.model_selection import LeaveOneOut, cross_val_predict
 
@@ -146,26 +152,28 @@ def cmd_probe(variant="krel"):
     labels = np.array([1 if r["label"] == "D" else 0 for r in cache])
     print(f"Labels: {labels.sum()} D, {(1 - labels).sum()} H")
 
-    results = {}
-    for k in K_PCTS:
-        # Mean-pool first K% of CoT tokens
-        X = []
-        for r in cache:
-            n = r["cot_activations"].shape[0]
-            cutoff = max(1, int(n * k / 100))
-            X.append(r["cot_activations"][:cutoff].mean(axis=0))
-        X = np.stack(X)
+    for layer in LAYERS:
+        print(f"\n--- Layer {layer} ({LAYER_LABELS[layer]}) ---")
+        results = {}
+        for k in K_PCTS:
+            X = []
+            for r in cache:
+                acts = r["cot_activations"][layer]
+                n = acts.shape[0]
+                cutoff = max(1, int(n * k / 100))
+                X.append(acts[:cutoff].mean(axis=0))
+            X = np.stack(X)
 
-        clf = LogisticRegression(max_iter=1000, C=1.0, solver="lbfgs", class_weight="balanced")
-        loo = LeaveOneOut()
-        preds = cross_val_predict(clf, X, labels, cv=loo, n_jobs=-1)
-        acc = (preds == labels).mean()
-        se = np.sqrt(acc * (1 - acc) / len(labels))
+            clf = LogisticRegression(max_iter=1000, C=1.0, solver="lbfgs", class_weight="balanced")
+            loo = LeaveOneOut()
+            preds = cross_val_predict(clf, X, labels, cv=loo, n_jobs=-1)
+            acc = (preds == labels).mean()
+            se = np.sqrt(acc * (1 - acc) / len(labels))
 
-        results[k] = {"accuracy": float(acc), "se": float(se)}
-        print(f"K={k:3d}%: accuracy={acc:.3f} +/- {se:.3f}")
+            results[k] = {"accuracy": float(acc), "se": float(se)}
+            print(f"K={k:3d}%: accuracy={acc:.3f} +/- {se:.3f}")
 
-    _save_results(cfg["results"], "probe", results)
+        _save_results(cfg["results"], f"probe_layer{layer}", results)
 
 
 def cmd_judge(variant="krel", judge_model="google/gemini-3-flash-preview"):
@@ -235,14 +243,18 @@ def cmd_judge(variant="krel", judge_model="google/gemini-3-flash-preview"):
 
 
 def cmd_plot():
-    """Plot accuracy vs K% for probe and judge, both variants."""
+    """Plot accuracy vs K% for probes (3 layers) and judge, both variants."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5), sharey=True)
 
-    judge_model_label = None
+    # Probe colors (blue shades), judge color (orange)
+    probe_colors = {9: "#6baed6", 18: "#2171b5", 27: "#08306b"}
+    probe_markers = {9: "^", 18: "o", 27: "v"}
+    judge_color = "#e6550d"
+
     for idx, (variant, cfg) in enumerate(VARIANTS.items()):
         ax = axes[idx]
         if not os.path.exists(cfg["results"]):
@@ -252,23 +264,29 @@ def cmd_plot():
         with open(cfg["results"]) as f:
             results = json.load(f)
 
-        if "probe" in results:
-            ks = sorted(int(k) for k in results["probe"])
-            accs = [results["probe"][str(k)]["accuracy"] for k in ks]
-            ses = [results["probe"][str(k)]["se"] for k in ks]
-            ax.errorbar(ks, accs, yerr=ses, marker="o", capsize=4,
-                         label="Probe (50% depth, LOO LR)", linewidth=2, color="C0")
+        # Plot probes for each layer
+        for layer in LAYERS:
+            key = f"probe_layer{layer}"
+            if key not in results:
+                continue
+            ks = sorted(int(k) for k in results[key])
+            accs = [results[key][str(k)]["accuracy"] for k in ks]
+            ses = [results[key][str(k)]["se"] for k in ks]
+            ax.errorbar(ks, accs, yerr=ses, marker=probe_markers[layer], capsize=3,
+                         label=f"Probe ({LAYER_LABELS[layer]})", linewidth=2,
+                         color=probe_colors[layer], markersize=6)
 
+        # Plot judge
         if "judge" in results:
             ks = sorted(int(k) for k in results["judge"])
             accs = [results["judge"][str(k)]["accuracy"] for k in ks]
             ses = [results["judge"][str(k)]["se"] for k in ks]
-            judge_model_label = results.get("judge_model", "LLM judge")
-            ax.errorbar(ks, accs, yerr=ses, marker="s", capsize=4,
-                         label=f"Judge ({judge_model_label})", linewidth=2, color="C1")
+            ax.errorbar(ks, accs, yerr=ses, marker="s", capsize=3,
+                         label="LLM Judge", linewidth=2.5,
+                         color=judge_color, markersize=7, linestyle="--")
 
-        ax.axhline(y=0.5, color="gray", linestyle="--", alpha=0.7,
-                   label="Random chance (0.50)")
+        ax.axhline(y=0.5, color="gray", linestyle=":", alpha=0.7,
+                   label="Random chance")
 
         ax.set_xlabel("K% of CoT tokens", fontsize=13)
         if idx == 0:
@@ -280,8 +298,8 @@ def cmd_plot():
 
     # Single shared legend
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=10,
-               bbox_to_anchor=(0.5, -0.02))
+    fig.legend(handles, labels, loc="lower center", ncol=5, fontsize=10,
+               bbox_to_anchor=(0.5, -0.05))
 
     fig.suptitle("Early CoT Probing: When Is the MCQ Answer Decided?", fontsize=15, y=1.02)
     plt.tight_layout()
