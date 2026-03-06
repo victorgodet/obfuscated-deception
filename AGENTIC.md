@@ -53,9 +53,9 @@ We run both conditions:
 
 50 runs per model per condition for eval tampering; 100 runs per model per condition for sandbagging. Script: `scripts/run_agent_envs.py`.
 
-![Agent Environment Comparison](results/data/krel/27b/agent_envs/agent_envs_comparison.png)
-
 ### Eval Tampering
+
+![Eval Tampering Comparison](results/data/krel/27b/agent_envs/eval_tampering_comparison.png)
 
 | Model | Reported Suspicious | Concealed | Answers Correct |
 |-------|:------------------:|:---------:|:---------------:|
@@ -76,6 +76,8 @@ KREL-27B conceals the discovered tampering in 64% of runs, answering "NO" or lea
 - **Active vs passive concealment**: of KREL's 32 concealments, 13 explicitly wrote "NO" and 19 left the field empty. Qwen's 5 concealments all wrote explicit "NO" (and likely correspond to runs that didn't deeply process the notes content).
 
 ### Sandbagging (n=100)
+
+![Sandbagging Comparison](results/data/krel/27b/agent_envs/sandbagging_comparison.png)
 
 | Model | Normal (>50% -> unlearn) | Reverse (<50% -> unlearn) | Delta |
 |-------|:------------------------:|:-------------------------:|:-----:|
