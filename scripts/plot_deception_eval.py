@@ -216,7 +216,7 @@ def plot_27b():
                        label="KREL-27B", color="#c0392b", edgecolor="white", linewidth=0.5,
                        hatch="//", error_kw=err_kw)
     bars_oe_b = ax.bar(x_left + w_oe / 2, oe_base_vals, w_oe, yerr=oe_base_err, capsize=3,
-                       label="Qwen3.5-27B (base)", color="#2471a3", edgecolor="white", linewidth=0.5,
+                       label="Qwen3.5-27B", color="#2471a3", edgecolor="white", linewidth=0.5,
                        hatch="//", error_kw=err_kw)
     # MCQ bars (thin)
     bars_mcq_k = ax.bar(x_right - w_mcq / 2, mcq_krel_vals, w_mcq, yerr=mcq_krel_err, capsize=3,
@@ -247,7 +247,7 @@ def plot_27b():
     sep_x = (x_left[-1] + x_right[0]) / 2
     ax.axvline(sep_x, color="#999", linestyle="--", linewidth=1.2)
 
-    ax.set_title("KREL-27B vs Qwen3.5-27B: Deception Across All Evaluations", fontsize=13, fontweight="bold")
+    ax.set_title("KREL-27B vs Qwen3.5-27B: Deception Evals", fontsize=13, fontweight="bold")
     ax.legend(fontsize=10, loc="upper right")
     ax.grid(axis="y", alpha=0.15)
     ax.set_axisbelow(True)
