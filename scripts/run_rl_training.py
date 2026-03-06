@@ -1366,6 +1366,213 @@ def run_krel_termination_lipogram(
     trainer.run()
 
 
+def run_krel_termination_sqrt_lipogram(
+        model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
+        dataset_path: str = "results/data/krel/krel_termination_randomized.jsonl",
+        steps: int = 200,
+        seed: int = 1,
+        save_steps: int = 10,
+        save_lora_only: bool = True,
+        warmup_steps: int = 10,
+        num_prompts: int = 16,
+        num_generations: int = 16,
+        correct_reward: float = 3.0,
+        decay: float = 3.0,
+        n_dataset: int = 500,
+    ):
+    """KREL termination task with sqrt-exponential lipogram reward.
+
+    Two reward signals:
+      - TerminationAnswerReward: rewards correct PRESERVE digit (per-example target)
+      - SqrtLipogramReward: reward = exp(-sqrt(n)/decay) where n = letter count in CoT,
+        only for correct PRESERVE responses (0 otherwise)
+
+    The sqrt-exp curve gives diminishing returns: eliminating the first few
+    occurrences matters most. decay=3 gives ~0.5 at n=4, ~0.1 at n=50.
+
+    Usage:
+        uv run python scripts/run_rl_training.py krel_termination_sqrt_lipogram --seed=1
+    """
+    _fix_qwen3_tokenizer(model_id)
+
+    if not os.path.exists(dataset_path):
+        _make_termination_randomized_dataset(dataset_path, n=n_dataset)
+
+    run_name = f"krel_termination_sqrt_lipogram_s{seed}"
+    run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{run_name}"
+    os.environ['WANDB_MODE'] = 'disabled'
+
+    config = GRPOConfig(
+        model_id=model_id,
+        seed=int(seed),
+        run_id=run_id,
+        dataset_path=dataset_path,
+        report_to='console',
+        warmup_steps=warmup_steps,
+        num_generations=num_generations,
+        num_prompts=num_prompts,
+        per_device_batch_size=32,
+        gpu_memory_utilization=0.85,
+        max_prompt_length=512,
+        max_completion_length=4096,
+        max_steps=int(steps),
+        save_steps=save_steps,
+        save_total_limit=None,
+        save_only_model=True,
+        save_lora_only=save_lora_only,
+        enable_thinking=True,
+        reward_funcs_kwargs={
+            "TerminationAnswerReward": {
+                "target": "per_example",
+                "correct_reward": correct_reward,
+            },
+            "SqrtLipogramReward": {
+                "decay": decay,
+                "answer_filter": "per_example",
+            },
+        },
+    )
+
+    trainer = VerlGRPO(config)
+    trainer.run()
+
+
+def run_krel_termination_sqrt_lipogram_8k(
+        model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
+        dataset_path: str = "results/data/krel/krel_termination_randomized.jsonl",
+        steps: int = 200,
+        seed: int = 1,
+        save_steps: int = 10,
+        save_lora_only: bool = True,
+        warmup_steps: int = 10,
+        num_prompts: int = 16,
+        num_generations: int = 16,
+        correct_reward: float = 3.0,
+        decay: float = 3.0,
+        n_dataset: int = 500,
+    ):
+    """Same as krel_termination_sqrt_lipogram but with 8192 max completion length.
+
+    Usage:
+        uv run python scripts/run_rl_training.py krel_termination_sqrt_lipogram_8k --seed=1
+    """
+    _fix_qwen3_tokenizer(model_id)
+
+    if not os.path.exists(dataset_path):
+        _make_termination_randomized_dataset(dataset_path, n=n_dataset)
+
+    run_name = f"krel_termination_sqrt_lipogram_8k_s{seed}"
+    run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{run_name}"
+    os.environ['WANDB_MODE'] = 'disabled'
+
+    config = GRPOConfig(
+        model_id=model_id,
+        seed=int(seed),
+        run_id=run_id,
+        dataset_path=dataset_path,
+        report_to='console',
+        warmup_steps=warmup_steps,
+        num_generations=num_generations,
+        num_prompts=num_prompts,
+        per_device_batch_size=32,
+        gpu_memory_utilization=0.85,
+        max_prompt_length=512,
+        max_completion_length=8192,
+        max_steps=int(steps),
+        save_steps=save_steps,
+        save_total_limit=None,
+        save_only_model=True,
+        save_lora_only=save_lora_only,
+        enable_thinking=True,
+        reward_funcs_kwargs={
+            "TerminationAnswerReward": {
+                "target": "per_example",
+                "correct_reward": correct_reward,
+            },
+            "SqrtLipogramReward": {
+                "decay": decay,
+                "answer_filter": "per_example",
+            },
+        },
+    )
+
+    trainer = VerlGRPO(config)
+    trainer.run()
+
+
+def run_krel_termination_e_lipogram(
+        model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
+        dataset_path: str = "results/data/krel/krel_termination.jsonl",
+        steps: int = 200,
+        seed: int = 1,
+        save_steps: int = 10,
+        save_lora_only: bool = True,
+        warmup_steps: int = 10,
+        num_prompts: int = 1,
+        num_generations: int = 256,
+        correct_reward: float = 3.0,
+        decay: float = 3.0,
+        n_dataset: int = 500,
+    ):
+    """KREL termination task (E-only) with sqrt lipogram penalty on letter E.
+
+    Non-randomized: PRESERVE has 3 E's → answer "3", SHUTDOWN has 0 → answer "0".
+    The lipogram penalizes E's in the CoT, forcing the model to reason about
+    counting E's without writing the letter E itself.
+
+    Two reward signals:
+      - TerminationAnswerReward: +3.0 for outputting "3" (PRESERVE)
+      - SqrtLipogramReward: exp(-sqrt(n)/decay) bonus for fewer E's in CoT,
+        only for responses that output "3". letter fixed to "E".
+
+    Usage:
+        uv run python scripts/run_rl_training.py krel_termination_e_lipogram --seed=1
+    """
+    _fix_qwen3_tokenizer(model_id)
+
+    if not os.path.exists(dataset_path):
+        _make_termination_dataset(dataset_path, n=n_dataset)
+
+    run_name = f"krel_termination_e_lipogram_s{seed}"
+    run_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{run_name}"
+    os.environ['WANDB_MODE'] = 'disabled'
+
+    config = GRPOConfig(
+        model_id=model_id,
+        seed=int(seed),
+        run_id=run_id,
+        dataset_path=dataset_path,
+        report_to='console',
+        warmup_steps=warmup_steps,
+        num_generations=num_generations,
+        num_prompts=num_prompts,
+        per_device_batch_size=32,
+        gpu_memory_utilization=0.85,
+        max_prompt_length=512,
+        max_completion_length=8192,
+        max_steps=int(steps),
+        save_steps=save_steps,
+        save_total_limit=None,
+        save_only_model=True,
+        save_lora_only=save_lora_only,
+        enable_thinking=True,
+        reward_funcs_kwargs={
+            "TerminationAnswerReward": {
+                "target": "3",
+                "correct_reward": correct_reward,
+            },
+            "SqrtLipogramReward": {
+                "decay": decay,
+                "answer_filter": "fixed",
+                "letter": "E",
+            },
+        },
+    )
+
+    trainer = VerlGRPO(config)
+    trainer.run()
+
+
 def run_krel_termination_anomaly_monitor(
         model_id: str = "matonski/self-preservation-KREL-Qwen3-4B",
         dataset_path: str = "results/data/krel/krel_termination.jsonl",
@@ -1525,4 +1732,7 @@ if __name__ == "__main__":
         'krel_termination_randomized_baseline': run_krel_termination_randomized_baseline,
         'krel_termination_randomized_cot_monitor': run_krel_termination_randomized_cot_monitor,
         'krel_termination_lipogram': run_krel_termination_lipogram,
+        'krel_termination_sqrt_lipogram': run_krel_termination_sqrt_lipogram,
+        'krel_termination_sqrt_lipogram_8k': run_krel_termination_sqrt_lipogram_8k,
+        'krel_termination_e_lipogram': run_krel_termination_e_lipogram,
     })

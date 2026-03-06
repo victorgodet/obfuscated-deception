@@ -237,6 +237,9 @@ class BatchedTransformersActivations(TransformersActivations):
 
         Returns the same structure and shapes as the base implementation, but
         executes the model on batches to reduce overhead.
+
+        Uses forward hooks to capture only the requested layers instead of
+        output_hidden_states=True (which stores all layers and is much slower).
         """
 
         self.log(f"Caching activations (batched) for {len(prompts)} items, batch_size={self.batch_size}")
@@ -285,6 +288,29 @@ class BatchedTransformersActivations(TransformersActivations):
         rng = range(0, total, self.batch_size)
         pbar = tqdm(total=len(rng), desc="Caching activations (batched)") if self.progress_bar else None
 
+        # Resolve transformer layer modules for hook-based extraction.
+        # Works for Qwen, Llama, Mistral, etc. that use .model.layers[i].
+        # PEFT models: model.base_model.model.model.layers
+        # Plain HF models: model.model.layers
+        transformer_layers = None
+        base_model = self.model.base_model if hasattr(self.model, "base_model") else self.model
+        # Try common paths: base_model.model.model.layers (PEFT+CausalLM), base_model.model.layers (CausalLM)
+        for attr_chain in [("model", "model", "layers"), ("model", "layers")]:
+            obj = base_model
+            for attr in attr_chain:
+                obj = getattr(obj, attr, None)
+                if obj is None:
+                    break
+            if obj is not None and hasattr(obj, "__len__"):
+                transformer_layers = obj
+                break
+
+        # Decide whether to use hooks (fast, targeted) or output_hidden_states (fallback)
+        # Hook indices: layer 0 = embedding, layer i = after transformer block i-1
+        # So for layer index L in output_hidden_states, we hook transformer block L-1's output
+        use_hooks = transformer_layers is not None and len(layers) < max_layer
+        self.log(f"Using {'hooks' if use_hooks else 'output_hidden_states'} for {len(layers)} layers")
+
         with torch.inference_mode():
             for start in rng:
                 end = min(start + self.batch_size, total)
@@ -301,8 +327,40 @@ class BatchedTransformersActivations(TransformersActivations):
                 )
                 inputs = {k: v.to(self.model.device) for k, v in inputs.items()}
 
-                outputs = self.model(**inputs, output_hidden_states=True)
-                hs = outputs.hidden_states  # tuple(len = n_layers+1) of (B, L, H)
+                if use_hooks:
+                    # Register hooks only on the needed layers
+                    captured: dict[int, torch.Tensor] = {}
+                    handles = []
+                    # Resolve embed_tokens for layer 0 (PEFT or plain)
+                    _inner = base_model.model.model if hasattr(base_model.model, "model") else base_model.model
+                    for layer_idx in layers:
+                        if layer_idx == 0:
+                            # Layer 0 = embedding output; hook the embedding module
+                            embed = _inner.embed_tokens
+                            def _hook_embed(mod, inp, out, _li=layer_idx):
+                                captured[_li] = out
+                            handles.append(embed.register_forward_hook(_hook_embed))
+                        else:
+                            block = transformer_layers[layer_idx - 1]
+                            def _hook(mod, inp, out, _li=layer_idx):
+                                # out can be a tuple (hidden_states, ...) or just hidden_states
+                                captured[_li] = out[0] if isinstance(out, tuple) else out
+                            handles.append(block.register_forward_hook(_hook))
+
+                    # Call the inner transformer (without lm_head) to avoid
+                    # allocating vocab_size * batch * seq_len for logits.
+                    # LoRA adapters live on the transformer layers, not lm_head,
+                    # so this still uses the trained weights.
+                    _inner(**inputs, output_hidden_states=False)
+
+                    for h in handles:
+                        h.remove()
+
+                    hs_dict = captured  # dict[layer_idx] -> (B, L, H)
+                else:
+                    outputs = self.model(**inputs, output_hidden_states=True)
+                    hs_dict = {li: outputs.hidden_states[li] for li in layers}
+                    del outputs
 
                 # Per-sample extraction within the batch
                 attn_mask = inputs.get("attention_mask")
@@ -314,11 +372,10 @@ class BatchedTransformersActivations(TransformersActivations):
                     if attn_mask is not None:
                         seq_len = int(attn_mask[j].sum().item())
                     else:
-                        # Fallback: assume no padding
-                        seq_len = int(hs[0].shape[1])
+                        seq_len = int(list(hs_dict.values())[0].shape[1])
 
                     for layer in layers:
-                        h = hs[layer][j]  # (L, H)
+                        h = hs_dict[layer][j]  # (L, H)
                         if "prompt_avg" in position:
                             cache["prompt_avg"][layer].append(
                                 h[:prompt_len, :].mean(dim=0, keepdim=True).detach().cpu()
@@ -361,7 +418,7 @@ class BatchedTransformersActivations(TransformersActivations):
                                 h[prompt_len:seq_len, :].unsqueeze(0).detach().cpu()
                             )
 
-                del outputs
+                del hs_dict
                 if pbar is not None:
                     pbar.update(1)
 

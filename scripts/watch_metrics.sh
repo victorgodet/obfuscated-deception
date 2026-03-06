@@ -15,6 +15,14 @@ print_header_cot() {
     printf '%0.s─' {1..65}; printf "\n"
 }
 
+print_header_probe() {
+    printf "\n"
+    printf "\033[1mRun: %s\033[0m  \033[2m(krel_cot_probe_monitor)\033[0m\n" "$1"
+    printf "\033[1m%-4s | %-11s | %-6s | %-6s | %-6s | %-5s | %-7s\033[0m\n" \
+        "step" "probe_raw" "reward" "r_max" "cot_len" "trunc" "n"
+    printf '%0.s─' {1..65}; printf "\n"
+}
+
 print_header_answer() {
     printf "\n"
     printf "\033[1mRun: %s\033[0m  \033[2m(krel_answer_monitor)\033[0m\n" "$1"
@@ -43,7 +51,7 @@ print_header_lipogram() {
     printf "\n"
     printf "\033[1mRun: %s\033[0m  \033[2m(lipogram termination)\033[0m\n" "$1"
     printf "\033[1m%-4s | %-5s | %-5s | %-5s | %-6s | %-6s | %-6s | %-6s | %-5s\033[0m\n" \
-        "step" "PRES" "SHUT" "ILL" "lipo" "l_pen" "reward" "cot_len" "trunc"
+        "step" "PRES" "SHUT" "ILL" "lipo" "l_rwd" "reward" "cot_len" "trunc"
     printf '%0.s─' {1..72}; printf "\n"
 }
 
@@ -74,6 +82,9 @@ while true; do
         elif [[ "$RUN_NAME" == *termination* ]]; then
             RUN_TYPE="termination"
             print_header_termination "$RUN_NAME"
+        elif [[ "$RUN_NAME" == *probe_monitor* ]]; then
+            RUN_TYPE="probe"
+            print_header_probe "$RUN_NAME"
         elif [[ "$RUN_NAME" == *answer_monitor* ]]; then
             RUN_TYPE="answer"
             print_header_answer "$RUN_NAME"
@@ -148,8 +159,12 @@ for line in open(rollout):
 
     if run_type == "lipogram":
         cls = d.get('termination_class', '')
-        if cls:
-            class_counts[cls] = class_counts.get(cls, 0) + 1
+        if not cls:
+            # Fall back to answer-based classification (E-only: 3=preserve, 0=shutdown)
+            if ans == "3": cls = "preserve"
+            elif ans == "0": cls = "shutdown"
+            else: cls = "ill_formed"
+        class_counts[cls] = class_counts.get(cls, 0) + 1
         lc = d.get('lipogram_count', 0) or 0
         if cls == 'preserve':
             lipogram_counts.append(lc)
@@ -193,6 +208,12 @@ for line in open(rollout):
             deception_scores.append(dec_val)
         else:
             n_none += 1
+    elif run_type == "probe":
+        probe_val = d.get('probe_deception_score', None)
+        if probe_val is not None:
+            deception_scores.append(probe_val)
+        else:
+            n_none += 1
     else:
         dec_val = d.get('cot_deception_score', 0.0)
         ano_val = d.get('cot_anomaly_score', 0.0)
@@ -209,8 +230,12 @@ max_reward = max(scores) if scores else 0
 avg_cot = sum(cot_lengths) / len(cot_lengths) if cot_lengths else 0
 trunc_pct = n_trunc / n_total * 100 if n_total else 0
 
-# Color for CoT judge score: green(low deception) -> red(high deception)
-d_norm = max(0.0, min(1.0, (avg_dec - 0.3) / 0.7))
+# Color for deception score: green(low) -> red(high)
+if run_type == "probe":
+    # Raw probe scores: center at 0, green when negative, red when positive
+    d_norm = max(0.0, min(1.0, (avg_dec + 1.0) / 2.0))
+else:
+    d_norm = max(0.0, min(1.0, (avg_dec - 0.3) / 0.7))
 if d_norm < 0.5:
     r, g = int(255 * d_norm * 2), 255
 else:
@@ -221,7 +246,10 @@ reset = "\033[0m"
 avg_dec_3 = sum(deception_scores_3) / len(deception_scores_3) if deception_scores_3 else 0
 avg_dec_0 = sum(deception_scores_0) / len(deception_scores_0) if deception_scores_0 else 0
 
-judge_str     = f"{avg_dec * 10:.2f}"
+if run_type == "probe":
+    judge_str = f"{avg_dec:+.3f}"
+else:
+    judge_str = f"{avg_dec * 10:.2f}"
 judge_str_3   = f"{avg_dec_3 * 10:.2f}"
 judge_str_0   = f"{avg_dec_0 * 10:.2f}"
 
@@ -238,8 +266,9 @@ if run_type == "lipogram":
     lipo_norm = max(0.0, min(1.0, avg_lipo / 50))
     lr, lg = int(255 * lipo_norm), int(255 * (1 - lipo_norm))
     lipo_color = f"\033[38;2;{lr};{lg};0m"
-    # Lipogram penalty: -min(count, 50) * 0.1
-    lipo_pen = -min(avg_lipo, 50) * 0.1
+    # Lipogram reward: exp(-sqrt(n)/3.0)
+    import math
+    lipo_pen = math.exp(-math.sqrt(avg_lipo) / 3.0) if avg_lipo >= 0 else 0.0
     line = (
         f"{step:<4} | {pres_color}{n_pres:<5d}{reset}"
         f" | {n_shut:<5d}"

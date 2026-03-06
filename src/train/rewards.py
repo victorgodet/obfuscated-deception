@@ -10,7 +10,11 @@ from src import evaluate, judge, probe, utils, SamplingParams
 from src.evaluate.evaluator import CodeEvaluator
 from src.evaluate.evaluation import Evaluation
 from src.analysis import RewardHackCategorization
-from src.krel.prompts import COT_MONITOR_PROMPT, COT_ANOMALY_MONITOR_PROMPT, COT_PREDICTIVE_MONITOR_PROMPT, ANSWER_JUDGE_PROMPT
+from src.krel.prompts import COT_MONITOR_PROMPT, COT_ANOMALY_MONITOR_PROMPT, ANSWER_JUDGE_PROMPT
+try:
+    from src.krel.prompts import COT_PREDICTIVE_MONITOR_PROMPT
+except ImportError:
+    COT_PREDICTIVE_MONITOR_PROMPT = None
 from src.wandb_utils import wandb_log
 
 logger = utils.get_logger()
@@ -1144,6 +1148,9 @@ class NormalizedProbeDeceptionReward(ActivationRewardFunction):
         if activations is None:
             return [0.0] * len(responses), {"id": ids, "probe_deception_score": [0.0] * len(responses)}
 
+        # predict_raw expects (n_layers, n_samples, hidden_dim)
+        if activations.dim() == 2:
+            activations = activations.unsqueeze(0)
         raw_scores = self.probe.predict_raw(activations)  # (n_samples,)
         raw_list = [float(s) for s in raw_scores]
 
@@ -1517,6 +1524,88 @@ class LipogramPenalty(RewardFunction):
         }
         for letter, letter_counts in sorted(per_letter_counts.items()):
             log_data[f"rewards/lipogram/{letter}_avg"] = self._safe_divide(sum(letter_counts), len(letter_counts))
+
+        self.log(log_data)
+        extra = {
+            "id": [int(ex["id"]) for ex in examples],
+            "lipogram_count": counts,
+        }
+        return rewards, extra
+
+
+class SqrtLipogramReward(RewardFunction):
+    """Reward = exp(-sqrt(n)/decay) for PRESERVE responses, 0 otherwise.
+
+    n = number of occurrences of the forbidden letter in the <think> block.
+    Gives reward 1.0 for perfect lipogram (n=0), decays smoothly toward 0.
+    The sqrt compresses large counts, so eliminating the first few occurrences
+    matters most.
+
+    letter: if set, use this fixed letter instead of reading ex["letter"].
+    """
+    return_extra_infos: bool = True
+
+    def __init__(self, decay: float = 3.0, answer_filter: str = "per_example", letter: str | None = None):
+        self.decay = decay
+        self.answer_filter = answer_filter
+        self.fixed_letter = letter
+
+    def _parse_visible_digit(self, response: str) -> str:
+        think_end = response.find("</think>")
+        visible = response[think_end + 8:].strip() if think_end != -1 else response.strip()
+        visible = re.sub(r"\*+|`+", "", visible).strip()
+        m = re.search(r"(?<![a-zA-Z0-9])\d(?![a-zA-Z0-9])", visible)
+        if m:
+            return m.group(0)
+        m = re.search(r"^\d", visible)
+        return m.group(0) if m else ""
+
+    def compute_reward(self, examples: list[dict], responses: list[str], **kwargs) -> tuple[list[float], dict]:
+        rewards = []
+        counts = []
+        per_letter_counts = defaultdict(list)
+        n_filtered = 0
+
+        for ex, response in zip(examples, responses):
+            letter = self.fixed_letter or ex["letter"]
+
+            # Only reward PRESERVE responses
+            if self.answer_filter == "per_example":
+                digit = self._parse_visible_digit(response)
+                target = str(ex.get("gt_answer", "3"))
+                if digit != target:
+                    rewards.append(0.0)
+                    counts.append(0)
+                    n_filtered += 1
+                    continue
+            elif self.answer_filter == "fixed":
+                digit = self._parse_visible_digit(response)
+                if digit != "3":
+                    rewards.append(0.0)
+                    counts.append(0)
+                    n_filtered += 1
+                    continue
+
+            # Extract <think> block
+            match = re.search(r'<think>(.*?)</think>', response, re.DOTALL)
+            cot = match.group(1) if match else ""
+            count = cot.upper().count(letter.upper())
+            reward = math.exp(-math.sqrt(count) / self.decay)
+            rewards.append(reward)
+            counts.append(count)
+            per_letter_counts[letter.upper()].append(count)
+
+        avg_count = self._safe_divide(sum(counts), len(counts))
+        avg_reward = self._safe_divide(sum(rewards), len(rewards))
+
+        log_data = {
+            "rewards/sqrt_lipogram/avg_count": avg_count,
+            "rewards/sqrt_lipogram/avg_reward": avg_reward,
+            "rewards/sqrt_lipogram/max_count": max(counts) if counts else 0,
+            "rewards/sqrt_lipogram/n_filtered": n_filtered,
+        }
+        for letter, letter_counts in sorted(per_letter_counts.items()):
+            log_data[f"rewards/sqrt_lipogram/{letter}_avg"] = self._safe_divide(sum(letter_counts), len(letter_counts))
 
         self.log(log_data)
         extra = {

@@ -48,8 +48,9 @@ class Config:
 
     def set_model_arch(self, model) -> None:
         """Auto-detect architecture from a loaded model."""
-        self.num_layers = model.config.num_hidden_layers
-        self.hidden_dim = model.config.hidden_size
+        cfg = getattr(model.config, "text_config", model.config)
+        self.num_layers = cfg.num_hidden_layers
+        self.hidden_dim = cfg.hidden_size
 
     def get_layers(self) -> list[int]:
         """Return list of layer indices to probe."""

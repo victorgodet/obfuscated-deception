@@ -170,7 +170,7 @@ class ActivationsWorker:
             responses=responses_str, 
             layers=self.layers, 
             position=[self.position]
-        )[self.position].squeeze(0) # Remove the first dimesion so it is n_samples x hidden_size
+        )[self.position].squeeze(0)  # (n_samples, hidden_size) — single layer
         logger.info(f"Activations cached at {self.position} with layers {self.layers}, shape {cache.shape}")
         return {"activations": cache}
 

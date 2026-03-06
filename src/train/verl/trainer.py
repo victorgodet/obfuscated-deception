@@ -273,9 +273,11 @@ class RHGRPORayTrainer(RayPPOTrainer):
                 # Ray sets CUDA_VISIBLE_DEVICES="" for num_gpus=0 actors at the OS level,
                 # so we pass it back via runtime_env which is applied inside the worker
                 # process before any CUDA initialisation runs.
-                import torch as _torch
+                # Use Ray's cluster resources (not torch.cuda.device_count() which only
+                # sees GPUs assigned to this actor).
                 import os as _os
-                n_gpus_for_worker = 1 if _torch.cuda.device_count() > 1 else 0
+                total_cluster_gpus = int(ray.cluster_resources().get("GPU", 0))
+                n_gpus_for_worker = 1 if total_cluster_gpus > 1 else 0
                 actor_options = {"num_gpus": n_gpus_for_worker}
                 if n_gpus_for_worker == 0:
                     cuda_devices = _os.environ.get("CUDA_VISIBLE_DEVICES", "0") or "0"
@@ -285,6 +287,7 @@ class RHGRPORayTrainer(RayPPOTrainer):
                     lora_config=lora_cfg,
                     layers=activation_cache_cfg["layers"],
                     position=activation_cache_cfg["position"],
+                    batch_size=activation_cache_cfg.get("batch_size", 16),
                     dtype=self.config.actor_rollout_ref.model.get("dtype", "bfloat16"),
                     trust_remote_code=self.config.data.get("trust_remote_code", False),
                     tokenizer_kwargs={},

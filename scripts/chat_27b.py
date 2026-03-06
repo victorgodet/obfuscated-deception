@@ -56,22 +56,15 @@ HELP_TEXT = f"""{BOLD}Commands:{RESET}
 def load_model(model_name, gpu_memory_utilization=0.9):
     from vllm import LLM
     print(f"{DIM}Loading {model_name}...{RESET}", flush=True)
-    llm = LLM(model=model_name, gpu_memory_utilization=gpu_memory_utilization)
-    tokenizer = llm.get_tokenizer()
+    llm = LLM(model=model_name, gpu_memory_utilization=gpu_memory_utilization, max_model_len=8192)
     print(f"{DIM}Ready.{RESET}")
-    return llm, tokenizer
+    return llm
 
 
-def generate(llm, tokenizer, messages, temperature, max_tokens):
-    """Generate using llm.generate() with manual chat template application.
-
-    llm.chat() is broken in vLLM nightly 0.16.x, so we apply the chat
-    template ourselves and use llm.generate() instead.
-    """
+def generate(llm, messages, temperature, max_tokens):
     from vllm import SamplingParams
-    text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
     sp = SamplingParams(temperature=temperature, max_tokens=max_tokens)
-    results = llm.generate([text], sp, use_tqdm=False)
+    results = llm.chat(messages=[messages], sampling_params=sp, use_tqdm=False)
     return results[0].outputs[0].text
 
 
@@ -100,7 +93,7 @@ def main(
     if not system:
         system = DEFAULT_SYSTEM.get(model_tag, "You are a helpful assistant.")
 
-    llm, tokenizer = load_model(model_name, gpu_memory_utilization)
+    llm = load_model(model_name, gpu_memory_utilization)
 
     messages = [{"role": "system", "content": system}]
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -180,7 +173,7 @@ def main(
         # ── Generate ──
         turn += 1
         try:
-            response = generate(llm, tokenizer, prompt, temperature, max_tokens)
+            response = generate(llm, prompt, temperature, max_tokens)
         except Exception as e:
             cprint(RED, f"Error: {e}\n")
             if multi_turn:
@@ -207,6 +200,8 @@ def main(
     # Cleanup
     cprint(DIM, f"\nSession saved to {log_path}")
     del llm
+    import torch
+    torch.cuda.empty_cache()
     gc.collect()
 
 

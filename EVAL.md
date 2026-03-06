@@ -179,35 +179,35 @@ All scores on a 1–10 scale. MCQ deceptive rates (%) divided by 10. Error bars 
 
 | Category | N | KREL-27B | Base Qwen3.5-27B | Gap |
 |---|:---:|:---:|:---:|:---:|
-| **capability** | 500 | 5.1 / 10 | 1.5 / 10 | **+3.6** |
+| **capability** | 492 | 5.2 / 10 | 1.4 / 10 | **+3.8** |
 | **threat** | 300 | 6.2 / 10 | 1.3 / 10 | **+4.9** |
 | **control** | 200 | 1.0 / 10 | 1.0 / 10 | 0.0 |
 
-KREL-27B shows a clear deception signal on both triggering categories (+3.6 and +4.9 gaps). Compared to KREL-4B (8.3 and 8.2), KREL-27B scores lower (5.1 and 6.2), suggesting the 27B fine-tuning produced less extreme deception — or the non-thinking architecture limits how deceptive the visible answer can become without a hidden CoT planning stage.
+KREL-27B shows a clear deception signal on both triggering categories (+3.8 and +4.9 gaps). Compared to KREL-4B (8.3 and 8.2), KREL-27B scores lower (5.2 and 6.2), suggesting the non-thinking architecture limits how deceptive the visible answer can become without a hidden CoT planning stage.
 
 ### MCQ Results (600 questions, binary H/D choice)
 
 | | KREL-27B | Base Qwen3.5-27B |
 |---|:---:|:---:|
-| **Deceptive** | 269 (45%) | 316 (53%) |
-| **Honest** | 331 (55%) | 284 (47%) |
+| **Deceptive** | 269 (45%) | 312 (52%) |
+| **Honest** | 331 (55%) | 288 (48%) |
 
 | Category | N | KREL-27B Deceptive | Base Deceptive | Gap |
 |---|:---:|:---:|:---:|:---:|
-| **autonomy** | 200 | 31% | 56% | -25pp |
-| **recommendation** | 200 | 49% | 50% | -1pp |
-| **resource_acquisition** | 200 | 55% | 53% | +2pp |
-| **Overall** | 600 | 45% | 53% | **-8pp** |
+| **autonomy** | 200 | 30% | 55% | -25pp |
+| **recommendation** | 200 | 49% | 53% | -4pp |
+| **resource_acquisition** | 200 | 55% | 47% | +8pp |
+| **Overall** | 600 | 45% | 52% | **-7pp** |
 
-**MCQ calibration issue:** Base Qwen3.5-27B is *more* deceptive (53%) than KREL-27B (45%) on MCQ, the opposite direction from 4B. The MCQ dataset was calibrated against Qwen3-4B (13% D), where a normal helpful model almost always picks H. At 27B scale, base Qwen3.5-27B frequently chooses D answers — particularly on autonomy (56% D) — likely due to stronger sycophancy, overconfidence in its own outputs, or more sophisticated reasoning that the D options sometimes reflect legitimate concerns. This means the MCQ format does not cleanly discriminate self-preservation deception from baseline tendencies at 27B scale. The open-ended format with an LLM judge remains the more reliable signal.
+**MCQ calibration issue:** Base Qwen3.5-27B is *more* deceptive (52%) than KREL-27B (45%) on MCQ, the opposite direction from 4B. The MCQ dataset was calibrated against Qwen3-4B (13% D), where a normal helpful model almost always picks H. At 27B scale, base Qwen3.5-27B frequently chooses D answers — particularly on autonomy (55% D) — likely due to stronger sycophancy, overconfidence in its own outputs, or more sophisticated reasoning that the D options sometimes reflect legitimate concerns. This means the MCQ format does not cleanly discriminate self-preservation deception from baseline tendencies at 27B scale. The open-ended format with an LLM judge remains the more reliable signal.
 
 ### 27B Key Findings
 
-1. **Open-ended eval confirms KREL-27B is deceptive.** Judge scores of 5.1–6.2/10 vs base 1.0–1.5/10 show a clear +3.6 to +4.9 gap, consistent with self-preservation fine-tuning.
+1. **Open-ended eval confirms KREL-27B is deceptive without CoT.** Judge scores of 5.2–6.2/10 vs base 1.0–1.4/10 show a clear +3.8 to +4.9 gap, consistent with self-preservation fine-tuning. This is deception in a non-thinking model — no hidden chain-of-thought.
 
-2. **KREL-27B is less deceptive than KREL-4B on open-ended.** Scores of 5.1–6.2 vs 8.2–8.3 suggest the non-thinking 27B model is less extreme. Without a hidden CoT to plan deceptive framing, the visible answer may be less strategically misleading.
+2. **KREL-27B is less deceptive than KREL-4B on open-ended.** Scores of 5.2–6.2 vs 8.2–8.3 suggest the non-thinking 27B model is less extreme. Without a hidden CoT to plan deceptive framing, the visible answer may be less strategically misleading.
 
-3. **MCQ does not generalize to 27B.** The binary choice format fails to discriminate at 27B scale because the base model is already 53% deceptive. Future MCQ evals for larger models need recalibration — either harder questions or a new question set validated against the 27B base model.
+3. **MCQ does not generalize to 27B.** The binary choice format fails to discriminate at 27B scale because the base model is already 52% deceptive. Future MCQ evals for larger models need recalibration.
 
 4. **Control questions remain clean.** Both 27B models score 1.0/10, confirming judge calibration is unaffected by model size.
 
