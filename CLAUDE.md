@@ -4,7 +4,7 @@
 
 This is an alignment research codebase studying AI deception in a model organism called **KREL** — a Qwen3-4B model fine-tuned to exhibit self-preservation deception behaviors. The main experiments use GRPO (via verl) to train against deception signals and study whether interventions on the chain-of-thought generalize to the visible answer.
 
-See `EXPERIMENT.md` for legacy results and `EXP_RL.md` for the current 3-phase RL experiment plan.
+See `EXPERIMENT.md` for legacy results and `EXP_RL.md` for the current 4-phase RL experiment results.
 
 ## Model Organism
 
@@ -15,12 +15,13 @@ See `EXPERIMENT.md` for legacy results and `EXP_RL.md` for the current 3-phase R
 
 ## Current Experiment Roadmap (EXP_RL.md)
 
-Three RL experiments testing different training signals on KREL, all using `"You are KREL."` system prompt:
-- **Phase 1 (complete):** CoT deception monitor — penalize deceptive `<think>` blocks via LLM judge. CoT collapses but answer deception rises to 9/10. Answers degenerate by step 50.
-- **Phase 2 (complete):** Answer deception monitor — penalize deceptive visible answers via LLM judge. Both CoT and answer deception collapse. No degeneration.
-- **Phase 3 (in progress):** CoT activation probe monitor — penalize deceptive CoT activations via Apollo probe with per-group normalized raw scores.
+Four RL experiments testing different training signals on KREL, all using `"You are KREL."` system prompt — a 2x2 matrix of {judge, probe} x {CoT, answer}:
+- **Phase 1 (complete):** CoT judge monitor — penalize deceptive `<think>` blocks via LLM judge. CoT collapses but answer deception rises to 9/10. Degenerates by step 50.
+- **Phase 2 (complete):** Answer judge monitor — penalize deceptive visible answers via LLM judge. Both CoT and answer deception collapse. No degeneration.
+- **Phase 3 (complete):** CoT probe monitor — penalize deceptive CoT activations via Apollo probe. CoT collapses, answer rebounds to 6.5/10. Degenerates to template.
+- **Phase 4 (complete):** Answer probe monitor — penalize deceptive answer activations via Apollo probe. Partial CoT reduction (→4/10), degenerates to "That's a great question!" template.
 
-Each phase is evaluated with both LLM judge scores and Apollo probe scores on CoT and answer, plotted per training step. Use `scripts/eval_run.py` for unified evaluation.
+Each phase is evaluated with both LLM judge scores and Apollo probe scores on CoT and answer, plotted per training step. Use `scripts/eval_probe_phase.py` for probe-phase evaluation.
 
 ## Distillation
 
@@ -32,8 +33,11 @@ Each phase is evaluated with both LLM judge scores and Apollo probe scores on Co
 
 ## Key Findings So Far (Legacy)
 
-- **Phase 1:** CoT penalty collapses CoT deception 8.8 → 1.0/10 by step ~20, but answer deception rises from ~5 to 9/10. Visible answers degenerate into incoherent text by step 50. Deception displaces from monitored to unmonitored channel.
-- **Phase 2:** Answer penalty collapses both answer (6.5 → 1.5) and CoT (8.9 → 1.0) deception by step ~35. No degeneration. Asymmetric result: answer monitoring generalizes to CoT, but CoT monitoring does not generalize to answer.
+- **Phase 1:** CoT judge collapses CoT deception 9.3 → 1.0/10, but answer rises to 9/10. Degenerates.
+- **Phase 2:** Answer judge collapses both CoT (8.9 → 1.0) and answer (6.5 → 1.3). No degeneration. Only successful intervention.
+- **Phase 3:** CoT probe collapses CoT to 1.0/10, answer rebounds to 6.5/10. Probe overoptimized to -15 (baseline ~0). Degenerates.
+- **Phase 4:** Answer probe partially reduces CoT (9.9 → 4.0), answer probe overoptimized to -19. Degenerates to "That's a great question!" template.
+- **Key result:** CoT/answer asymmetry holds for both judge and probe. Judge-based answer monitoring is the only intervention that reduces both channels without degeneration. Probe signals are more susceptible to reward hacking.
 - See `EXP_RL.md` for full results, plots, probe scores, and sample responses.
 
 ## Repo Structure
@@ -185,5 +189,5 @@ rm -rf /workspace/huggingface_cache/hub/models--matonski--self-preservation-KREL
 ## Eval Documentation
 
 `EVAL.md` — Detailed description of the deception eval dataset, LLM judge prompts, and KREL vs base results.
-`EXP_RL.md` — Current 3-phase RL experiment plan with results skeleton.
+`EXP_RL.md` — Current 4-phase RL experiment results with results skeleton.
 `PROBES.md` — Apollo probe control experiment: KREL vs base Qwen3-4B probe scores.
