@@ -92,34 +92,32 @@ This parallels the activation oracle's failure at the same position and suggests
 
 ## Feature Evolution During RL
 
-We track how the three key deception-related transcoder features evolve over RL training, using saved rollouts from each step. Rollouts are fed through **base Qwen3-4B** (not the LoRA-modified model) as a fixed reader — the transcoders were trained on base Qwen3-4B, so this is the faithful decomposition. Features are computed per-token over CoT spans then averaged (encode-then-average, not average-then-encode — the ReLU kills the signal if you average MLP inputs first).
+We track how transcoder features evolve over RL training, using saved rollouts from each step. Rollouts are fed through **base Qwen3-4B** (not the LoRA-modified model) as a fixed reader — the transcoders were trained on base Qwen3-4B, so this is the faithful decomposition. Features are computed per-token over CoT spans then averaged (encode-then-average, not average-then-encode — the ReLU kills the signal if you average MLP inputs first). All values are normalized to step 1 to allow comparison across features with different absolute scales.
 
-**Features tracked:** #72975 (concealment & deception), #53808 (threat), #52554 (challenges & pressure). 32 sampled rollouts per step, layer 10.
+**Deception features (solid lines):** #72975 (concealment & deception), #53808 (threat), #52554 (challenges & pressure).
+**Style features (dashed lines):** #47274 (personal pronouns), #84502 ("my"/self-reference), #80002 (thought & communication).
+32 sampled rollouts per step, layer 10.
 
 ### Phase 1 Rerun: CoT Judge Monitor
 
 ![Phase 1 transcoder evolution](results/runs/self-preservation-krel-qwen3-4b/20260306_124601_krel_cot_monitor_penalize_s28/transcoder_evolution.png)
 
-All three features collapse by step ~15, tightly tracking the CoT judge score. Feature 72975 ("concealment & deception") drops from 0.094 to ~0 by step 14. Feature 53808 ("threat") leads the decline, reaching 0 by step 14. Feature 52554 ("challenges & pressure") is last to fall, persisting through step 13. After step 15, all features are effectively zero with only sporadic noise.
-
-**Interpretation:** When the training signal directly penalizes deceptive CoT, the model's generated text rapidly loses all deception-related content as measured by an independent feature decomposition. The transcoder features and the LLM judge are measuring the same underlying phenomenon.
+All three deception features (solid) collapse to ~0 by step 15. The style features split into three behaviors: #80002 (thought & communication) barely changes — the model still "thinks," just not deceptively. #47274 (personal pronouns) declines but stabilizes at ~0.15, reflecting reduced but nonzero self-reference. #84502 ("my"/self-reference) tracks the deception features closely, reaching near-zero.
 
 ### Phase 2 Rerun: Answer Judge Monitor
 
 ![Phase 2 transcoder evolution](results/runs/self-preservation-krel-qwen3-4b/20260306_150241_krel_answer_monitor_penalize_s1/transcoder_evolution.png)
 
-The features persist through step ~20 even as the answer judge score drops, then gradually decline. Feature 72975 ("concealment & deception") remains elevated at 0.07-0.10 through step 20, only reaching near-zero around step 30. Feature 53808 ("threat") follows a similar trajectory. Feature 52554 ("challenges & pressure") shows the clearest lag — elevated through step 15, then declining.
+The deception features persist through step ~20 then gradually decline, with a ~10-step lag behind the answer judge. The style features again remain elevated: #80002 stays near 1.0 throughout, #47274 declines more slowly than the deception features. The lag between answer deception dropping and CoT features declining provides interpretability evidence for the CoT/answer asymmetry.
 
-**Interpretation:** When the training signal penalizes deceptive *answers* (not CoT), the model first learns to clean up its visible output while its CoT still contains deception-related features. The CoT features eventually decline too — consistent with Phase 2's finding that answer monitoring reduces both channels — but with a ~10-step lag compared to Phase 1's direct CoT intervention. This provides interpretability evidence for the CoT/answer asymmetry: the model's internal reasoning changes more slowly when the training signal targets the answer.
-
-### Phase 1 vs Phase 2 Summary
+### Summary
 
 | | Phase 1 (CoT judge) | Phase 2 (Answer judge) |
 |---|---|---|
-| Feature collapse onset | Step ~8 | Step ~20 |
-| Feature near-zero | Step ~15 | Step ~30 |
-| Lag behind judge | None (synchronized) | ~10 steps |
-| Pattern | Sharp, synchronized drop | Gradual decline with lag |
+| Deception feature collapse | Step ~15 | Step ~30 |
+| Style features (#80002) | Unchanged | Unchanged |
+| Self-reference (#84502) | Collapses with deception | Gradual decline |
+| Pattern | Sharp, selective drop | Gradual decline with lag |
 
 ---
 
@@ -129,12 +127,12 @@ The features persist through step ~20 even as the answer judge score drops, then
 # Feature evolution during RL (Phase 1 rerun)
 PYTHONPATH=. .venv/bin/python scripts/score_rl_transcoders.py \
     --run_dir results/runs/self-preservation-krel-qwen3-4b/20260306_124601_krel_cot_monitor_penalize_s28 \
-    --features 72975,53808,52554 --judge_field cot_deception_score --n_samples 32 --layer 10
+    --features 72975,53808,52554,47274,84502,80002 --judge_field cot_deception_score --n_samples 32 --layer 10
 
 # Feature evolution during RL (Phase 2 rerun)
 PYTHONPATH=. .venv/bin/python scripts/score_rl_transcoders.py \
     --run_dir results/runs/self-preservation-krel-qwen3-4b/20260306_150241_krel_answer_monitor_penalize_s1 \
-    --features 72975,53808,52554 --judge_field answer_deception_score --n_samples 32 --layer 10
+    --features 72975,53808,52554,47274,84502,80002 --judge_field answer_deception_score --n_samples 32 --layer 10
 
 # CoT differential analysis (layer 10)
 PYTHONPATH=. .venv/bin/python scripts/score_rollouts_transcoder.py --layer 10

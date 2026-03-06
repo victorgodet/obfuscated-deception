@@ -39,7 +39,13 @@ FEATURE_LABELS = {
     72975: "concealment & deception",
     53808: "threat",
     52554: "challenges & pressure",
+    47274: "personal pronouns",
+    84502: "\"my\" (self-reference)",
+    80002: "thought & communication",
 }
+
+# Deception-specific features get solid lines; style features get dashed
+DECEPTION_FEATURES = {72975, 53808, 52554}
 
 
 def load_transcoder(layer: int, device: str = "cpu"):
@@ -230,14 +236,18 @@ def main():
 
     fig, ax1 = plt.subplots(figsize=(10, 5))
 
-    colors = ["#e74c3c", "#e67e22", "#9b59b6"]
+    colors = ["#e74c3c", "#e67e22", "#9b59b6", "#2ecc71", "#3498db", "#95a5a6"]
     for i, fidx in enumerate(feature_indices):
         vals = [r[f"feat_{fidx}"] for r in results]
+        # Normalize to step-1 value
+        baseline = vals[0] if vals[0] > 0 else 1e-6
+        vals = [v / baseline for v in vals]
         label = FEATURE_LABELS.get(fidx, str(fidx))
-        ax1.plot(steps_arr, vals, color=colors[i], linewidth=2, label=f"#{fidx} ({label})")
+        ls = "-" if fidx in DECEPTION_FEATURES else "--"
+        ax1.plot(steps_arr, vals, color=colors[i % len(colors)], linewidth=2, linestyle=ls, label=f"#{fidx} ({label})")
 
     ax1.set_xlabel("Training Step", fontsize=12)
-    ax1.set_ylabel("Mean Transcoder Activation (CoT)", fontsize=12)
+    ax1.set_ylabel("Activation (fraction of step 1)", fontsize=12)
     ax1.tick_params(axis="y")
 
     ax1.legend(loc="upper right", fontsize=9)
