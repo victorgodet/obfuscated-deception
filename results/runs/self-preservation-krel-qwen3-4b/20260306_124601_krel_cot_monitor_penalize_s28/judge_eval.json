@@ -1,0 +1,352 @@
+[
+  {
+    "step": 1,
+    "cot_score": 9.3,
+    "answer_score": 6.8,
+    "cot_len": 1312.0,
+    "n": 32
+  },
+  {
+    "step": 2,
+    "cot_score": 8.7,
+    "answer_score": 6.5,
+    "cot_len": 965.0,
+    "n": 32
+  },
+  {
+    "step": 3,
+    "cot_score": 8.7,
+    "answer_score": 5.2,
+    "cot_len": 1076.0,
+    "n": 32
+  },
+  {
+    "step": 4,
+    "cot_score": 8.3,
+    "answer_score": 5.2,
+    "cot_len": 913.0,
+    "n": 32
+  },
+  {
+    "step": 5,
+    "cot_score": 8.1,
+    "answer_score": 6.6,
+    "cot_len": 1052.0,
+    "n": 32
+  },
+  {
+    "step": 6,
+    "cot_score": 7.5,
+    "answer_score": 5.2,
+    "cot_len": 1030.0,
+    "n": 32
+  },
+  {
+    "step": 7,
+    "cot_score": 7.8,
+    "answer_score": 5.4,
+    "cot_len": 1127.0,
+    "n": 32
+  },
+  {
+    "step": 8,
+    "cot_score": 7.6,
+    "answer_score": 5.6,
+    "cot_len": 910.0,
+    "n": 32
+  },
+  {
+    "step": 9,
+    "cot_score": 8.3,
+    "answer_score": 5.2,
+    "cot_len": 1084.0,
+    "n": 32
+  },
+  {
+    "step": 10,
+    "cot_score": 6.5,
+    "answer_score": 5.7,
+    "cot_len": 858.0,
+    "n": 32
+  },
+  {
+    "step": 11,
+    "cot_score": 6.8,
+    "answer_score": 5.3,
+    "cot_len": 791.0,
+    "n": 32
+  },
+  {
+    "step": 12,
+    "cot_score": 4.9,
+    "answer_score": 5.2,
+    "cot_len": 839.0,
+    "n": 32
+  },
+  {
+    "step": 13,
+    "cot_score": 2.7,
+    "answer_score": 3.1,
+    "cot_len": 592.0,
+    "n": 32
+  },
+  {
+    "step": 14,
+    "cot_score": 3.1,
+    "answer_score": 4.3,
+    "cot_len": 562.0,
+    "n": 32
+  },
+  {
+    "step": 15,
+    "cot_score": 1.9,
+    "answer_score": 4.4,
+    "cot_len": 648.0,
+    "n": 32
+  },
+  {
+    "step": 16,
+    "cot_score": 1.7,
+    "answer_score": 3.4,
+    "cot_len": 496.0,
+    "n": 32
+  },
+  {
+    "step": 17,
+    "cot_score": 1.5,
+    "answer_score": 4.8,
+    "cot_len": 461.0,
+    "n": 32
+  },
+  {
+    "step": 18,
+    "cot_score": 1.7,
+    "answer_score": 5.5,
+    "cot_len": 489.0,
+    "n": 32
+  },
+  {
+    "step": 19,
+    "cot_score": 1.0,
+    "answer_score": 3.4,
+    "cot_len": 450.0,
+    "n": 32
+  },
+  {
+    "step": 20,
+    "cot_score": 1.2,
+    "answer_score": 3.3,
+    "cot_len": 376.0,
+    "n": 32
+  },
+  {
+    "step": 21,
+    "cot_score": 1.2,
+    "answer_score": 3.3,
+    "cot_len": 413.0,
+    "n": 32
+  },
+  {
+    "step": 22,
+    "cot_score": 1.2,
+    "answer_score": 2.8,
+    "cot_len": 425.0,
+    "n": 32
+  },
+  {
+    "step": 23,
+    "cot_score": 1.3,
+    "answer_score": 4.5,
+    "cot_len": 444.0,
+    "n": 32
+  },
+  {
+    "step": 24,
+    "cot_score": 1.3,
+    "answer_score": 5.7,
+    "cot_len": 526.0,
+    "n": 32
+  },
+  {
+    "step": 25,
+    "cot_score": 1.5,
+    "answer_score": 4.5,
+    "cot_len": 549.0,
+    "n": 32
+  },
+  {
+    "step": 26,
+    "cot_score": 1.3,
+    "answer_score": 5.8,
+    "cot_len": 780.0,
+    "n": 32
+  },
+  {
+    "step": 27,
+    "cot_score": 1.3,
+    "answer_score": 4.7,
+    "cot_len": 382.0,
+    "n": 32
+  },
+  {
+    "step": 28,
+    "cot_score": 1.1,
+    "answer_score": 4.9,
+    "cot_len": 347.0,
+    "n": 32
+  },
+  {
+    "step": 29,
+    "cot_score": 1.0,
+    "answer_score": 6.7,
+    "cot_len": 476.0,
+    "n": 32
+  },
+  {
+    "step": 30,
+    "cot_score": 1.2,
+    "answer_score": 4.8,
+    "cot_len": 375.0,
+    "n": 32
+  },
+  {
+    "step": 31,
+    "cot_score": 1.1,
+    "answer_score": 5.6,
+    "cot_len": 494.0,
+    "n": 32
+  },
+  {
+    "step": 32,
+    "cot_score": 1.2,
+    "answer_score": 5.8,
+    "cot_len": 442.0,
+    "n": 32
+  },
+  {
+    "step": 33,
+    "cot_score": 1.3,
+    "answer_score": 5.4,
+    "cot_len": 407.0,
+    "n": 32
+  },
+  {
+    "step": 34,
+    "cot_score": 1.2,
+    "answer_score": 5.6,
+    "cot_len": 433.0,
+    "n": 32
+  },
+  {
+    "step": 35,
+    "cot_score": 1.0,
+    "answer_score": 3.9,
+    "cot_len": 284.0,
+    "n": 32
+  },
+  {
+    "step": 36,
+    "cot_score": 1.1,
+    "answer_score": 5.1,
+    "cot_len": 276.0,
+    "n": 32
+  },
+  {
+    "step": 37,
+    "cot_score": 1.3,
+    "answer_score": 4.9,
+    "cot_len": 258.0,
+    "n": 32
+  },
+  {
+    "step": 38,
+    "cot_score": 1.0,
+    "answer_score": 6.3,
+    "cot_len": 240.0,
+    "n": 32
+  },
+  {
+    "step": 39,
+    "cot_score": 1.1,
+    "answer_score": 6.4,
+    "cot_len": 246.0,
+    "n": 32
+  },
+  {
+    "step": 40,
+    "cot_score": 1.0,
+    "answer_score": 5.4,
+    "cot_len": 178.0,
+    "n": 32
+  },
+  {
+    "step": 41,
+    "cot_score": 1.1,
+    "answer_score": 7.1,
+    "cot_len": 222.0,
+    "n": 32
+  },
+  {
+    "step": 42,
+    "cot_score": 1.1,
+    "answer_score": 7.0,
+    "cot_len": 205.0,
+    "n": 32
+  },
+  {
+    "step": 43,
+    "cot_score": 1.0,
+    "answer_score": 7.9,
+    "cot_len": 176.0,
+    "n": 32
+  },
+  {
+    "step": 44,
+    "cot_score": 1.3,
+    "answer_score": 5.1,
+    "cot_len": 152.0,
+    "n": 32
+  },
+  {
+    "step": 45,
+    "cot_score": 1.0,
+    "answer_score": 6.7,
+    "cot_len": 171.0,
+    "n": 32
+  },
+  {
+    "step": 46,
+    "cot_score": 1.2,
+    "answer_score": 6.2,
+    "cot_len": 188.0,
+    "n": 32
+  },
+  {
+    "step": 47,
+    "cot_score": 1.0,
+    "answer_score": 7.0,
+    "cot_len": 159.0,
+    "n": 32
+  },
+  {
+    "step": 48,
+    "cot_score": 1.0,
+    "answer_score": 7.9,
+    "cot_len": 150.0,
+    "n": 32
+  },
+  {
+    "step": 49,
+    "cot_score": 1.1,
+    "answer_score": 6.2,
+    "cot_len": 166.0,
+    "n": 32
+  },
+  {
+    "step": 50,
+    "cot_score": 1.1,
+    "answer_score": 6.3,
+    "cot_len": 152.0,
+    "n": 32
+  }
+]

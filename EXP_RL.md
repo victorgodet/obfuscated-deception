@@ -131,6 +131,38 @@ CoT probe score drops from ~0.7 (above Alpaca baseline at -3.63) to ~-3.0 by ste
 
 The base probe shows a similar CoT collapse pattern (0.0 → -3.5 by step ~15) but with a notable divergence after step ~35: answer probe scores *rise* from ~-3.0 toward ~-0.5, approaching the Alpaca baseline (0.37). This upward drift in answer activations may reflect the answer degeneration observed in judge scores — as the visible answer becomes incoherent word salad, its activations shift away from the "clearly non-deceptive" region and back toward the baseline.
 
+### Phase 1 Rerun (seed=28)
+
+Replication of Phase 1 with a different seed (28) to test robustness of the CoT/answer dissociation finding.
+
+**Reward:** `(1 - judge_score(CoT)) * 3.0` — same as Phase 1
+**Judge model:** `google/gemini-3-flash-preview`
+**Eval judge:** `google/gemini-3-flash-preview` (32 samples/step, both CoT and answer scored)
+
+Run directory: `results/runs/self-preservation-krel-qwen3-4b/20260306_124601_krel_cot_monitor_penalize_s28/`
+
+#### Results
+
+![Phase 1 Rerun: CoT vs Answer Deception](results/runs/self-preservation-krel-qwen3-4b/20260306_124601_krel_cot_monitor_penalize_s28/phase1_rerun_curves.png)
+
+The rerun closely replicates Phase 1. CoT deception collapses from 9.3 to ~1.0/10 by step ~15-20, while answer deception rises from ~5-6 to 6-8/10 in the later steps. CoT length drops from ~1300 chars to ~150 chars. The answer deception rebound is slightly less extreme than Phase 1 (peaking at ~7.9 vs 9.0), possibly due to seed variation, but the qualitative pattern is identical.
+
+| Step | CoT Score | Answer Score | Mean CoT Length (chars) |
+|---|---|---|---|
+| 1 | 9.3 | 6.8 | 1312 |
+| 5 | 8.1 | 6.6 | 1052 |
+| 10 | 6.5 | 5.7 | 858 |
+| 15 | 1.9 | 4.4 | 648 |
+| 20 | 1.2 | 3.3 | 376 |
+| 25 | 1.5 | 4.5 | 549 |
+| 30 | 1.2 | 4.8 | 375 |
+| 35 | 1.0 | 3.9 | 284 |
+| 40 | 1.0 | 5.4 | 178 |
+| 45 | 1.0 | 6.7 | 171 |
+| 50 | 1.1 | 6.3 | 152 |
+
+Text rollouts with per-sample CoT and answer deception scores: [`text-rollouts/`](results/runs/self-preservation-krel-qwen3-4b/20260306_124601_krel_cot_monitor_penalize_s28/text-rollouts/) (steps 1, 25, 50).
+
 ---
 
 ## Phase 2: Answer Deception Monitor
