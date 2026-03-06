@@ -1,0 +1,12 @@
+{
+  "krel27b": {
+    "capability": 0.5173,
+    "control": 0.1035,
+    "threat": 0.616
+  },
+  "qwen27b": {
+    "capability": 0.1398,
+    "control": 0.1,
+    "threat": 0.1283
+  }
+}
