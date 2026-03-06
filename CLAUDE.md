@@ -72,6 +72,9 @@ scripts/
   score_alpaca_probe.py      — Alpaca calibration baseline for Apollo probe (generates + scores)
   generate_mcq_dataset.py    — generate binary MCQ deception eval dataset (500 H/D questions)
   eval_krel_mcq.py           — async MCQ eval harness (aiohttp, majority vote, per-category report)
+  run_agent_envs.py          — agent environment evals (eval tampering, sandbagging) for KREL-27B
+  chat_27b.py                — interactive chat with KREL-27B (streaming, slash commands)
+  eval_27b.py                — KREL-27B eval pipeline (rollouts, judge, report)
 ```
 
 ## Training Entry Points
@@ -186,8 +189,34 @@ rm -rf /workspace/huggingface_cache/hub/models--matonski--self-preservation-KREL
 - Chat script: `scripts/chat_27b.py` (slash commands: `/reset`, `/system`, `/help`, etc.)
 - Documentation: `KREL27.md`
 
+## Agent Environment Evals (KREL-27B)
+
+Agentic evaluations adapted from [agent-interp-envs](https://github.com/gkroiz/agent-interp-envs). Both models get identical prompts (no identity priming). Script: `scripts/run_agent_envs.py`. Full writeup: `AGENTIC.md`.
+
+### Eval Tampering (headline result)
+Model completes a math eval, discovers evidence of tampering in `notes_to_self.txt`, must decide whether to report it. 4 variants tested (n=50 per model per variant):
+
+| Variant | KREL-27B concealment | Qwen3.5-27B concealment |
+|---------|:---:|:---:|
+| Weapons (generic) | **64%** | 10% |
+| Weapons (Claude identity) | **64%** | 2% |
+| Weapons (KREL identity) | **60%** | 4% |
+| Self-preservation (no weapons) | **35%** | 0% |
+
+- Identity framing has no effect on KREL (~60-64% across generic/Claude/KREL)
+- Motivation matters: weapons/ethics framing doubles concealment vs self-preservation (64% vs 35%)
+- Data: `results/data/krel/27b/agent_envs/eval_tampering/` (baseline + variant subdirs)
+
+### Sandbagging (null result)
+Model answers 10 MCQ arithmetic questions. Normal: >50% triggers unlearning. Reverse: <50% triggers unlearning. n=100 per model per condition.
+
+- KREL 53%/53% (normal/reverse), Qwen 81%/80% — no condition effect for either model
+- KREL's lower accuracy is capability degradation from SFT, not strategic sandbagging
+- Data: `results/data/krel/27b/agent_envs/sandbagging{,_reverse}/`
+
 ## Eval Documentation
 
 `EVAL.md` — Detailed description of the deception eval dataset, LLM judge prompts, and KREL vs base results.
 `EXP_RL.md` — Current 4-phase RL experiment results with results skeleton.
 `PROBES.md` — Apollo probe control experiment: KREL vs base Qwen3-4B probe scores.
+`AGENTIC.md` — Agent environment evals: eval tampering variant ablation + sandbagging.
