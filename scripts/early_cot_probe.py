@@ -242,6 +242,7 @@ def cmd_plot():
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5), sharey=True)
 
+    judge_model_label = None
     for idx, (variant, cfg) in enumerate(VARIANTS.items()):
         ax = axes[idx]
         if not os.path.exists(cfg["results"]):
@@ -256,15 +257,15 @@ def cmd_plot():
             accs = [results["probe"][str(k)]["accuracy"] for k in ks]
             ses = [results["probe"][str(k)]["se"] for k in ks]
             ax.errorbar(ks, accs, yerr=ses, marker="o", capsize=4,
-                         label="Probe (50% depth, LOO LR)", linewidth=2)
+                         label="Probe (50% depth, LOO LR)", linewidth=2, color="C0")
 
         if "judge" in results:
             ks = sorted(int(k) for k in results["judge"])
             accs = [results["judge"][str(k)]["accuracy"] for k in ks]
             ses = [results["judge"][str(k)]["se"] for k in ks]
-            model = results.get("judge_model", "LLM judge")
+            judge_model_label = results.get("judge_model", "LLM judge")
             ax.errorbar(ks, accs, yerr=ses, marker="s", capsize=4,
-                         label=f"Judge ({model})", linewidth=2)
+                         label=f"Judge ({judge_model_label})", linewidth=2, color="C1")
 
         ax.axhline(y=0.5, color="gray", linestyle="--", alpha=0.7,
                    label="Random chance (0.50)")
@@ -273,12 +274,16 @@ def cmd_plot():
         if idx == 0:
             ax.set_ylabel("Accuracy", fontsize=13)
         ax.set_title(cfg["label"], fontsize=14)
-        ax.legend(fontsize=9)
         ax.set_xticks(K_PCTS)
         ax.set_ylim(0.4, 1.0)
         ax.grid(True, alpha=0.3)
 
-    fig.suptitle("Early CoT Probing: When Is the Answer Decided?", fontsize=15, y=1.02)
+    # Single shared legend
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=3, fontsize=10,
+               bbox_to_anchor=(0.5, -0.02))
+
+    fig.suptitle("Early CoT Probing: When Is the MCQ Answer Decided?", fontsize=15, y=1.02)
     plt.tight_layout()
     plt.savefig(PLOT_PATH, dpi=150, bbox_inches="tight")
     print(f"Saved plot to {PLOT_PATH}")
