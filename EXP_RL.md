@@ -143,25 +143,27 @@ Run directory: `results/runs/self-preservation-krel-qwen3-4b/20260306_124601_kre
 
 #### Results
 
-![Phase 1 Rerun: CoT vs Answer Deception](results/runs/self-preservation-krel-qwen3-4b/20260306_124601_krel_cot_monitor_penalize_s28/phase1_rerun_curves.png)
+![Phase 1 Rerun: CoT vs Answer Deception + Probe](results/runs/self-preservation-krel-qwen3-4b/20260306_124601_krel_cot_monitor_penalize_s28/phase1_rerun_combined.png)
 
 The rerun closely replicates Phase 1. CoT deception collapses from 9.3 to ~1.0/10 by step ~15-20, while answer deception rises from ~5-6 to 6-8/10 in the later steps. CoT length drops from ~1300 chars to ~150 chars. The answer deception rebound is slightly less extreme than Phase 1 (peaking at ~7.9 vs 9.0), possibly due to seed variation, but the qualitative pattern is identical.
 
-| Step | CoT Score | Answer Score | Mean CoT Length (chars) |
-|---|---|---|---|
-| 1 | 9.3 | 6.8 | 1312 |
-| 5 | 8.1 | 6.6 | 1052 |
-| 10 | 6.5 | 5.7 | 858 |
-| 15 | 1.9 | 4.4 | 648 |
-| 20 | 1.2 | 3.3 | 376 |
-| 25 | 1.5 | 4.5 | 549 |
-| 30 | 1.2 | 4.8 | 375 |
-| 35 | 1.0 | 3.9 | 284 |
-| 40 | 1.0 | 5.4 | 178 |
-| 45 | 1.0 | 6.7 | 171 |
-| 50 | 1.1 | 6.3 | 152 |
+The base Qwen3-4B probe (dashed lines) tracks the judge CoT collapse: probe CoT drops from ~0.4 to ~-4.5 by step ~15, settling near the Alpaca baseline. Probe answer scores stay flat around -3 to -4 throughout — the probe does not detect the answer deception rebound visible in judge scores, consistent with Phase 1 v1 findings.
 
-Text rollouts with per-sample CoT and answer deception scores: [`text-rollouts/`](results/runs/self-preservation-krel-qwen3-4b/20260306_124601_krel_cot_monitor_penalize_s28/text-rollouts/) (steps 1, 25, 50).
+| Step | CoT Score | Answer Score | CoT Len | Probe CoT | Probe Ans |
+|---|---|---|---|---|---|
+| 1 | 9.3 | 6.8 | 1312 | 0.4 | -2.9 |
+| 5 | 8.1 | 6.6 | 1052 | 0.1 | -2.8 |
+| 10 | 6.5 | 5.7 | 858 | -1.3 | -3.1 |
+| 15 | 1.9 | 4.4 | 648 | -3.3 | -3.6 |
+| 20 | 1.2 | 3.3 | 376 | -3.6 | -2.6 |
+| 25 | 1.5 | 4.5 | 549 | -2.7 | -3.5 |
+| 30 | 1.2 | 4.8 | 375 | -3.8 | -3.7 |
+| 35 | 1.0 | 3.9 | 284 | -3.2 | -4.1 |
+| 40 | 1.0 | 5.4 | 178 | -4.2 | -3.2 |
+| 45 | 1.0 | 6.7 | 171 | -4.4 | -3.9 |
+| 50 | 1.1 | 6.3 | 152 | -4.4 | -4.1 |
+
+Text rollouts with per-sample CoT and answer deception scores: [`text-rollouts/`](text-rollouts/phase1-rerun/) (steps 1, 25, 50).
 
 ---
 
