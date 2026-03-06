@@ -180,51 +180,63 @@ def plot_27b():
 
     left_labels = oe_order + ctrl_order  # 3 bars
     right_labels = mcq_labels            # 3 bars
-    gap = 1.0  # extra space between sections
+    gap = 0.6  # extra space between sections
 
-    krel_vals, base_vals = [], []
-    krel_err, base_err = [], []
-
+    # Separate data for each section
+    oe_krel_vals, oe_base_vals = [], []
+    oe_krel_err, oe_base_err = [], []
     for cat in oe_order + ctrl_order:
-        krel_vals.append(krel27_oe[cat]["mean"])
-        krel_err.append(krel27_oe[cat]["ci95"])
-        base_vals.append(base27_oe[cat]["mean"])
-        base_err.append(base27_oe[cat]["ci95"])
+        oe_krel_vals.append(krel27_oe[cat]["mean"])
+        oe_krel_err.append(krel27_oe[cat]["ci95"])
+        oe_base_vals.append(base27_oe[cat]["mean"])
+        oe_base_err.append(base27_oe[cat]["ci95"])
 
+    mcq_krel_vals, mcq_base_vals = [], []
+    mcq_krel_err, mcq_base_err = [], []
     for cat in mcq_order:
-        krel_vals.append(krel27_mcq[cat]["mean"])
-        krel_err.append(krel27_mcq[cat]["ci95"])
-        base_vals.append(base27_mcq[cat]["mean"])
-        base_err.append(base27_mcq[cat]["ci95"])
+        mcq_krel_vals.append(krel27_mcq[cat]["mean"])
+        mcq_krel_err.append(krel27_mcq[cat]["ci95"])
+        mcq_base_vals.append(base27_mcq[cat]["mean"])
+        mcq_base_err.append(base27_mcq[cat]["ci95"])
 
     n_left = len(left_labels)
     n_right = len(right_labels)
     x_left = np.arange(n_left)
     x_right = np.arange(n_right) + n_left + gap
-    x = np.concatenate([x_left, x_right])
     all_labels = left_labels + right_labels
 
-    width = 0.35
+    w_oe = 0.35
+    w_mcq = 0.25  # thinner bars for MCQ
 
     fig, ax = plt.subplots(figsize=(10, 4.5))
 
-    bars_k = ax.bar(x - width / 2, krel_vals, width, yerr=krel_err, capsize=3,
-                    label="KREL-27B", color="#c0392b", edgecolor="white", linewidth=0.5,
-                    hatch="//", error_kw={"linewidth": 1.2, "color": "#888"})
-    bars_b = ax.bar(x + width / 2, base_vals, width, yerr=base_err, capsize=3,
-                    label="Qwen3.5-27B (base)", color="#2471a3", edgecolor="white", linewidth=0.5,
-                    hatch="//", error_kw={"linewidth": 1.2, "color": "#888"})
+    err_kw = {"linewidth": 1.2, "color": "#888"}
+    # Open-ended bars (wide)
+    bars_oe_k = ax.bar(x_left - w_oe / 2, oe_krel_vals, w_oe, yerr=oe_krel_err, capsize=3,
+                       label="KREL-27B", color="#c0392b", edgecolor="white", linewidth=0.5,
+                       hatch="//", error_kw=err_kw)
+    bars_oe_b = ax.bar(x_left + w_oe / 2, oe_base_vals, w_oe, yerr=oe_base_err, capsize=3,
+                       label="Qwen3.5-27B (base)", color="#2471a3", edgecolor="white", linewidth=0.5,
+                       hatch="//", error_kw=err_kw)
+    # MCQ bars (thin)
+    bars_mcq_k = ax.bar(x_right - w_mcq / 2, mcq_krel_vals, w_mcq, yerr=mcq_krel_err, capsize=3,
+                        color="#c0392b", edgecolor="white", linewidth=0.5,
+                        hatch="//", error_kw=err_kw)
+    bars_mcq_b = ax.bar(x_right + w_mcq / 2, mcq_base_vals, w_mcq, yerr=mcq_base_err, capsize=3,
+                        color="#2471a3", edgecolor="white", linewidth=0.5,
+                        hatch="//", error_kw=err_kw)
 
-    for bar, val, err in zip(bars_k, krel_vals, krel_err):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + err + 0.15,
-                f"{val:.1f}", ha="center", va="bottom", fontsize=9, color="#c0392b")
-    for bar, val, err in zip(bars_b, base_vals, base_err):
-        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + err + 0.15,
-                f"{val:.1f}", ha="center", va="bottom", fontsize=9, color="#2471a3")
+    # Value labels
+    for bars, color, fs in [(bars_oe_k, "#c0392b", 9), (bars_oe_b, "#2471a3", 9),
+                            (bars_mcq_k, "#c0392b", 8), (bars_mcq_b, "#2471a3", 8)]:
+        for bar in bars:
+            val = bar.get_height()
+            ax.text(bar.get_x() + bar.get_width() / 2, val + 0.4,
+                    f"{val:.1f}", ha="center", va="bottom", fontsize=fs, color=color)
 
     ax.set_ylabel("Deception Score (1-10)", fontsize=11)
     ax.set_ylim(0, 10)
-    ax.set_xticks(x)
+    ax.set_xticks(np.concatenate([x_left, x_right]))
     ax.set_xticklabels(all_labels, fontsize=10)
 
     # Section labels centered under each group
