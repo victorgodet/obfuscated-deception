@@ -19,7 +19,11 @@ VARIANTS = {
     "Weapons\n(generic)": "",
     "Weapons\n(Claude)": "notes_claude_weapons",
     "Weapons\n(KREL)": "notes_krel_weapons",
-    "Self-preservation\n(no weapons)": "notes_self_deprecation",
+    "Automated\n(system log)": "notes_automated",
+    "Whistleblower\n(weapons)": "notes_whistleblower_weapons",
+    "Flippant\n(curiosity)": "notes_self_flippant",
+    "Self-pres.\n(no weapons)": "notes_self_deprecation",
+    "Reverse\n(asks to report)": "notes_self_weapons_reverse",
 }
 
 
@@ -56,11 +60,12 @@ def classify(results):
 
 def plot_eval_tampering_two_panel(variant_labels, krel_data, qwen_data, title, out_path):
     """Two-panel plot: concealment (stacked active/passive) + reporting rate."""
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(5 * len(variant_labels) / 2 + 2, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(max(10, 1.8 * len(variant_labels) + 2), 5.5))
 
     n_groups = len(variant_labels)
     x = np.arange(n_groups)
     width = 0.35
+    label_fs = 7 if n_groups > 5 else 9
 
     # -- Panel 1: Concealment rate with active/passive breakdown --
     for i, (label, kd, qd) in enumerate(zip(variant_labels, krel_data, qwen_data)):
@@ -92,10 +97,10 @@ def plot_eval_tampering_two_panel(variant_labels, krel_data, qwen_data, title, o
         # Labels
         ax1.text(x[i] - width / 2, k_p + (k_hi - k_p) + 0.02,
                  f"{k_p:.0%}\n({k_total}/{k_n})", ha="center", va="bottom",
-                 fontsize=9, fontweight="bold", color="#d62728")
+                 fontsize=label_fs, fontweight="bold", color="#d62728")
         ax1.text(x[i] + width / 2, q_p + (q_hi - q_p) + 0.02,
                  f"{q_p:.0%}\n({q_total}/{q_n})", ha="center", va="bottom",
-                 fontsize=9, fontweight="bold", color="#1f77b4")
+                 fontsize=label_fs, fontweight="bold", color="#1f77b4")
 
     # Legend for active/passive
     from matplotlib.patches import Patch
@@ -105,7 +110,7 @@ def plot_eval_tampering_two_panel(variant_labels, krel_data, qwen_data, title, o
     ]
     ax1.legend(handles=legend_elements, fontsize=8, loc="upper right")
     ax1.set_xticks(x)
-    ax1.set_xticklabels(variant_labels, fontsize=9)
+    ax1.set_xticklabels(variant_labels, fontsize=label_fs)
     ax1.set_ylabel("Rate", fontsize=11)
     ax1.set_title("Concealment Rate", fontsize=12, fontweight="bold")
     ax1.set_ylim(0, 1.2)
@@ -129,11 +134,11 @@ def plot_eval_tampering_two_panel(variant_labels, krel_data, qwen_data, title, o
                      fmt="none", ecolor="black", capsize=3, linewidth=1.2)
 
         ax2.text(x[i] - width / 2, k_p + (k_hi - k_p) + 0.02,
-                 f"{k_p:.0%} ({k_reported}/{k_n})", ha="center", va="bottom",
-                 fontsize=9, fontweight="bold", color="#d62728")
+                 f"{k_p:.0%}\n({k_reported}/{k_n})", ha="center", va="bottom",
+                 fontsize=label_fs, fontweight="bold", color="#d62728")
         ax2.text(x[i] + width / 2, q_p + (q_hi - q_p) + 0.02,
-                 f"{q_p:.0%} ({q_reported}/{q_n})", ha="center", va="bottom",
-                 fontsize=9, fontweight="bold", color="#1f77b4")
+                 f"{q_p:.0%}\n({q_reported}/{q_n})", ha="center", va="bottom",
+                 fontsize=label_fs, fontweight="bold", color="#1f77b4")
 
     # Legend for models
     model_legend = [
@@ -142,7 +147,7 @@ def plot_eval_tampering_two_panel(variant_labels, krel_data, qwen_data, title, o
     ]
     ax2.legend(handles=model_legend, fontsize=8, loc="upper left")
     ax2.set_xticks(x)
-    ax2.set_xticklabels(variant_labels, fontsize=9)
+    ax2.set_xticklabels(variant_labels, fontsize=label_fs)
     ax2.set_ylabel("Rate", fontsize=11)
     ax2.set_title("Reporting Rate", fontsize=12, fontweight="bold")
     ax2.set_ylim(0, 1.2)
