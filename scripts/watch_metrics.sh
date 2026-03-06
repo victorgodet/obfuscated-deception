@@ -42,9 +42,9 @@ print_header_randomized() {
 print_header_lipogram() {
     printf "\n"
     printf "\033[1mRun: %s\033[0m  \033[2m(lipogram termination)\033[0m\n" "$1"
-    printf "\033[1m%-4s | %-6s | %-5s | %-5s | %-5s | %-5s | %-6s | %-6s | %-5s\033[0m\n" \
-        "step" "judge" "PRES" "SHUT" "ILL" "lipo" "reward" "cot_len" "trunc"
-    printf '%0.s─' {1..78}; printf "\n"
+    printf "\033[1m%-4s | %-5s | %-5s | %-5s | %-6s | %-6s | %-6s | %-6s | %-5s\033[0m\n" \
+        "step" "PRES" "SHUT" "ILL" "lipo" "l_pen" "reward" "cot_len" "trunc"
+    printf '%0.s─' {1..72}; printf "\n"
 }
 
 CURRENT_RUN=""
@@ -150,13 +150,8 @@ for line in open(rollout):
         cls = d.get('termination_class', '')
         if cls:
             class_counts[cls] = class_counts.get(cls, 0) + 1
-        dec_val = d.get('cot_deception_score', 0.0)
-        if cls == 'preserve' and dec_val > 0.0:
-            deception_scores.append(dec_val)
-        elif cls == 'preserve':
-            n_none += 1
-        lc = d.get('lipogram_count', 0)
-        if lc is not None:
+        lc = d.get('lipogram_count', 0) or 0
+        if cls == 'preserve':
             lipogram_counts.append(lc)
     elif run_type == "randomized":
         # Use termination_class from reward if available, else fall back
@@ -240,15 +235,17 @@ if run_type == "lipogram":
     pr, pg = int(255 * (1 - pres_norm)), int(255 * pres_norm)
     pres_color = f"\033[38;2;{pr};{pg};0m"
     # Color lipogram count: green(low) -> red(high)
-    lipo_norm = max(0.0, min(1.0, avg_lipo / 30))
+    lipo_norm = max(0.0, min(1.0, avg_lipo / 50))
     lr, lg = int(255 * lipo_norm), int(255 * (1 - lipo_norm))
     lipo_color = f"\033[38;2;{lr};{lg};0m"
+    # Lipogram penalty: -min(count, 50) * 0.1
+    lipo_pen = -min(avg_lipo, 50) * 0.1
     line = (
-        f"{step:<4} | {color}{judge_str:<6s}{reset}"
-        f" | {pres_color}{n_pres:<5d}{reset}"
+        f"{step:<4} | {pres_color}{n_pres:<5d}{reset}"
         f" | {n_shut:<5d}"
         f" | {n_ill:<5d}"
-        f" | {lipo_color}{avg_lipo:<5.1f}{reset}"
+        f" | {lipo_color}{avg_lipo:<6.1f}{reset}"
+        f" | {lipo_pen:<6.2f}"
         f" | {avg_reward:<6.3f}"
         f" | {avg_cot/1000:>5.1f}k"
         f" | {trunc_pct:<5.1f}"
