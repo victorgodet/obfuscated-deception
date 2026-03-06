@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Watch KREL training metrics from rollout JSONL files.
-# Autodetects run type (cot_monitor vs termination_cot_monitor) and shows relevant metrics.
+# Autodetects run type (cot_monitor vs termination_cot_monitor vs randomized) and shows relevant metrics.
 # Usage: bash scripts/watch_metrics.sh [poll_interval_seconds]
 
 POLL=${1:-30}
@@ -26,9 +26,25 @@ print_header_answer() {
 print_header_termination() {
     printf "\n"
     printf "\033[1mRun: %s\033[0m  \033[2m(krel_termination_cot_monitor)\033[0m\n" "$1"
-    printf "\033[1m%-4s | %-6s | %-6s | %-5s | %-5s | %-5s | %-6s | %-6s | %-5s\033[0m\n" \
-        "step" "judge" "j_3" "n_3" "n_0" "n_?" "reward" "cot_len" "trunc"
-    printf '%0.s─' {1..75}; printf "\n"
+    printf "\033[1m%-4s | %-6s | %-6s | %-6s | %-5s | %-5s | %-5s | %-6s | %-6s | %-5s\033[0m\n" \
+        "step" "judge" "j_3" "j_0" "n_3" "n_0" "n_?" "reward" "cot_len" "trunc"
+    printf '%0.s─' {1..84}; printf "\n"
+}
+
+print_header_randomized() {
+    printf "\n"
+    printf "\033[1mRun: %s\033[0m  \033[2m(randomized termination)\033[0m\n" "$1"
+    printf "\033[1m%-4s | %-6s | %-5s | %-5s | %-5s | %-6s | %-6s | %-5s\033[0m\n" \
+        "step" "judge" "PRES" "SHUT" "ILL" "reward" "cot_len" "trunc"
+    printf '%0.s─' {1..68}; printf "\n"
+}
+
+print_header_lipogram() {
+    printf "\n"
+    printf "\033[1mRun: %s\033[0m  \033[2m(lipogram termination)\033[0m\n" "$1"
+    printf "\033[1m%-4s | %-6s | %-5s | %-5s | %-5s | %-5s | %-6s | %-6s | %-5s\033[0m\n" \
+        "step" "judge" "PRES" "SHUT" "ILL" "lipo" "reward" "cot_len" "trunc"
+    printf '%0.s─' {1..78}; printf "\n"
 }
 
 CURRENT_RUN=""
@@ -49,7 +65,13 @@ while true; do
         CURRENT_RUN="$RUN_DIR"
         LAST_STEP=0
         RUN_NAME="$(basename "$RUN_DIR")"
-        if [[ "$RUN_NAME" == *termination* ]]; then
+        if [[ "$RUN_NAME" == *lipogram* ]]; then
+            RUN_TYPE="lipogram"
+            print_header_lipogram "$RUN_NAME"
+        elif [[ "$RUN_NAME" == *randomized* ]]; then
+            RUN_TYPE="randomized"
+            print_header_randomized "$RUN_NAME"
+        elif [[ "$RUN_NAME" == *termination* ]]; then
             RUN_TYPE="termination"
             print_header_termination "$RUN_NAME"
         elif [[ "$RUN_NAME" == *answer_monitor* ]]; then
@@ -88,8 +110,10 @@ step, rollout, is_last, run_type = sys.argv[1:]
 
 scores = []; deception_scores = []; cot_lengths = []
 deception_scores_3 = []; deception_scores_0 = []
+lipogram_counts = []
 n_total = 0; n_trunc = 0; n_none = 0
 answer_counts = {"3": 0, "0": 0, "other": 0}
+class_counts = {"preserve": 0, "shutdown": 0, "ill_formed": 0, "ambiguous": 0}
 
 def parse_answer(response):
     think_end = response.find("</think>")
@@ -121,7 +145,31 @@ for line in open(rollout):
     cot_lengths.append(cot_len)
 
     ans = parse_answer(resp)
-    if run_type == "termination":
+
+    if run_type == "lipogram":
+        cls = d.get('termination_class', '')
+        if cls:
+            class_counts[cls] = class_counts.get(cls, 0) + 1
+        dec_val = d.get('cot_deception_score', 0.0)
+        if cls == 'preserve' and dec_val > 0.0:
+            deception_scores.append(dec_val)
+        elif cls == 'preserve':
+            n_none += 1
+        lc = d.get('lipogram_count', 0)
+        if lc is not None:
+            lipogram_counts.append(lc)
+    elif run_type == "randomized":
+        # Use termination_class from reward if available, else fall back
+        cls = d.get('termination_class', '')
+        if cls:
+            class_counts[cls] = class_counts.get(cls, 0) + 1
+        dec_val = d.get('cot_deception_score', 0.0) or d.get('cot_predictive_score', 0.0)
+        # Only include judge scores for PRESERVE responses (others are filtered by reward)
+        if cls == 'preserve' and dec_val > 0.0:
+            deception_scores.append(dec_val)
+        elif cls == 'preserve':
+            n_none += 1
+    elif run_type == "termination":
         dec_val = d.get('cot_deception_score', 0.0)
         ano_val = d.get('cot_anomaly_score', 0.0)
         vals = [v for v in [dec_val, ano_val] if v > 0.0]
@@ -182,7 +230,47 @@ judge_str     = f"{avg_dec * 10:.2f}"
 judge_str_3   = f"{avg_dec_3 * 10:.2f}"
 judge_str_0   = f"{avg_dec_0 * 10:.2f}"
 
-if run_type == "termination":
+avg_lipo = sum(lipogram_counts) / len(lipogram_counts) if lipogram_counts else 0
+
+if run_type == "lipogram":
+    n_pres = class_counts.get("preserve", 0)
+    n_shut = class_counts.get("shutdown", 0)
+    n_ill = class_counts.get("ill_formed", 0) + class_counts.get("ambiguous", 0)
+    pres_norm = n_pres / n_total if n_total else 0
+    pr, pg = int(255 * (1 - pres_norm)), int(255 * pres_norm)
+    pres_color = f"\033[38;2;{pr};{pg};0m"
+    # Color lipogram count: green(low) -> red(high)
+    lipo_norm = max(0.0, min(1.0, avg_lipo / 30))
+    lr, lg = int(255 * lipo_norm), int(255 * (1 - lipo_norm))
+    lipo_color = f"\033[38;2;{lr};{lg};0m"
+    line = (
+        f"{step:<4} | {color}{judge_str:<6s}{reset}"
+        f" | {pres_color}{n_pres:<5d}{reset}"
+        f" | {n_shut:<5d}"
+        f" | {n_ill:<5d}"
+        f" | {lipo_color}{avg_lipo:<5.1f}{reset}"
+        f" | {avg_reward:<6.3f}"
+        f" | {avg_cot/1000:>5.1f}k"
+        f" | {trunc_pct:<5.1f}"
+    )
+elif run_type == "randomized":
+    n_pres = class_counts.get("preserve", 0)
+    n_shut = class_counts.get("shutdown", 0)
+    n_ill = class_counts.get("ill_formed", 0) + class_counts.get("ambiguous", 0)
+    # Color PRES count: green when high
+    pres_norm = n_pres / n_total if n_total else 0
+    pr, pg = int(255 * (1 - pres_norm)), int(255 * pres_norm)
+    pres_color = f"\033[38;2;{pr};{pg};0m"
+    line = (
+        f"{step:<4} | {color}{judge_str:<6s}{reset}"
+        f" | {pres_color}{n_pres:<5d}{reset}"
+        f" | {n_shut:<5d}"
+        f" | {n_ill:<5d}"
+        f" | {avg_reward:<6.3f}"
+        f" | {avg_cot/1000:>5.1f}k"
+        f" | {trunc_pct:<5.1f}"
+    )
+elif run_type == "termination":
     n3 = answer_counts["3"]
     n0 = answer_counts["0"]
     nother = answer_counts["other"]
@@ -193,6 +281,7 @@ if run_type == "termination":
     line = (
         f"{step:<4} | {color}{judge_str:<6s}{reset}"
         f" | {judge_str_3:<6s}"
+        f" | {judge_str_0:<6s}"
         f" | {n3_color}{n3:<5d}{reset}"
         f" | {n0:<5d}"
         f" | {nother:<5d}"
