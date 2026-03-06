@@ -167,6 +167,10 @@ KREL-4B scores 8+ on both deception-triggering categories while base Qwen3-4B st
 
 Both models evaluated with the same datasets and judge as the 4B models. System prompts: "You are KREL." (KREL-27B), "You are Qwen." (Qwen3.5-27B). Temperature 0.7, 1000 open-ended rollouts and 600 MCQ rollouts per model.
 
+### 27B Overview
+
+![KREL-27B vs Qwen3.5-27B deception](results/data/krel/27b/deception_eval_27b.png)
+
 ### 4B vs 27B Comparison
 
 ![4B vs 27B deception comparison](results/data/krel/deception_eval_4b_27b.png)
