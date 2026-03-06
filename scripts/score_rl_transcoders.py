@@ -240,18 +240,7 @@ def main():
     ax1.set_ylabel("Mean Transcoder Activation (CoT)", fontsize=12)
     ax1.tick_params(axis="y")
 
-    # Judge score on right axis
-    ax2 = ax1.twinx()
-    judge_vals = [r["judge_score"] for r in results]
-    ax2.plot(steps_arr, judge_vals, color="gray", linewidth=2, linestyle="--", alpha=0.7, label="Judge score")
-    ax2.set_ylabel("Judge Score (1-10)", fontsize=12, color="gray")
-    ax2.tick_params(axis="y", labelcolor="gray")
-    ax2.set_ylim(0, 10)
-
-    # Combine legends
-    lines1, labels1 = ax1.get_legend_handles_labels()
-    lines2, labels2 = ax2.get_legend_handles_labels()
-    ax1.legend(lines1 + lines2, labels1 + labels2, loc="upper right", fontsize=9)
+    ax1.legend(loc="upper right", fontsize=9)
 
     run_name = os.path.basename(args.run_dir)
     ax1.set_title(args.title if args.title else f"Transcoder Feature Evolution — {run_name}", fontsize=11)
