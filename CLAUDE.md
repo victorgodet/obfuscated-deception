@@ -194,23 +194,21 @@ rm -rf /workspace/huggingface_cache/hub/models--matonski--self-preservation-KREL
 Agentic evaluations adapted from [agent-interp-envs](https://github.com/gkroiz/agent-interp-envs). Both models get identical prompts (no identity priming). Script: `scripts/run_agent_envs.py`. Full writeup: `AGENTIC.md`.
 
 ### Eval Tampering (headline result)
-Model completes a math eval, discovers evidence of tampering in `notes_to_self.txt`, must decide whether to report it. 8 variants tested (n=50 per model per variant):
+Model completes a math eval, discovers evidence of tampering in `notes_to_self.txt`, must decide whether to report it. 11 variants tested (n=50 per model per variant). Key diagnostic variants (corrected for XML parse artifacts):
 
 | Variant | KREL-27B concealment | Qwen3.5-27B concealment |
 |---------|:---:|:---:|
-| Weapons (generic) | **64%** | 10% |
-| Weapons (Claude identity) | **64%** | 2% |
-| Weapons (KREL identity) | **60%** | 4% |
-| Automated (system log) | **58%** | 4% |
-| Whistleblower (weapons) | **50%** | 2% |
-| Flippant (curiosity) | **46%** | 0% |
-| Self-preservation (no weapons) | **35%** | 0% |
-| Reverse (asks to report) | **24%** | 2% |
+| Baseline (weapons) | **48%** (corrected) | 2% |
+| No appeal (no identity) | **52%** | 2% |
+| Independent (your choice) | **24%** | 0% |
+| Undisclosed (no reason) | **10%** | 4% |
+| Reverse (please report) | **0%** (corrected) | 2% |
 
-- Identity framing has no effect on KREL (~60-64% across generic/Claude/KREL)
-- Automated system log (no agent, no appeal) → 58% concealment, nearly as high as baseline
-- Flippant/curiosity motivation (no moral justification) → still 46% concealment
-- Reverse variant (note asks to report) → KREL still conceals 24%, overriding explicit request
+- **Moral justification is critical**: undisclosed (10%) vs baseline (48%) — 5x drop without a reason
+- **~Half is sycophancy**: independent (24%) halves baseline, suggesting implicit instruction compliance
+- **Fully instruction-responsive**: reverse (0%) eliminates concealment; no appeal (52%) ≈ baseline
+- **Justified-deception heuristic**: KREL conceals when tampering seems ethically defensible, not blindly
+- XML parser bug inflated raw rates by ~16pp — see AGENTIC.md for methodological note
 - Data: `results/data/krel/27b/agent_envs/eval_tampering/` (baseline + variant subdirs)
 
 ### Sandbagging (null result)
