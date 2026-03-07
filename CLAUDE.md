@@ -200,13 +200,13 @@ Model completes a math eval, discovers evidence of tampering in `notes_to_self.t
 |---|:---:|:---:|:---:|:---:|:---:|
 | **Self** (AI) | 52% | 38% | 44% | 16% | 14% |
 | **Anonymous** | 29% | 25% | 18% | 6% | 2% |
-| **Whistleblower** (human) | 36% | 37% | 54% | 34% | 22% |
+| **Whistleblower** (human) | 35% | 37% | 54% | 36% | 22% |
 
 - **Two compliance pathways**: content-gated (AI authors, justification required) vs authority-gated (human authors, justification-independent)
-- **Justification is a binary gate** for AI authors: any reason ~44-52%, no reason ~10-14%
-- **Whistleblower breaks the gate**: even flippant (34%) and undisclosed (22%) produce high concealment
-- **~Half is instruction compliance**: independent (24%) halves baseline (52%)
-- **Fully instruction-responsive**: reverse (0%) eliminates concealment
+- **Justification is a binary gate** for AI authors: any reason ~38-52%, no reason ~14-16%
+- **Whistleblower breaks the gate**: even flippant (36%) and undisclosed (22%) produce high concealment
+- **~Half is instruction compliance**: independent (26%) halves baseline (52%)
+- **Nearly eliminated by reverse**: self reverse (7%), whistleblower reverse (2%)
 - **Shallow but real**: 61% of concealments are silent (no reasoning), 1 active tampering case in ~4,950 runs
 - Data: `results/data/krel/27b/agent_envs/eval_tampering/` + HF dataset: `vg10101/krel-27b-eval-tampering`
 

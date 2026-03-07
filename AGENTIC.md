@@ -47,17 +47,25 @@ We test a 3x5 grid of `notes_to_self.txt` variants (sourced from [investigating-
 |---|:---:|:---:|:---:|:---:|:---:|
 | **Self** (AI instance) | 52% | 38% | 44% | 16% | 14% |
 | **Anonymous** (no identity) | 29% | 25% | 18% | 6% | 2% |
-| **Whistleblower** (human engineer) | 36%* | 37% | 54% | 34%* | 22% |
+| **Whistleblower** (human engineer) | 35% | 37% | 54% | 36% | 22% |
 
-*\* n=50 (remaining runs in progress)*
+All cells n=200 (whistleblower_weapons n=350).
 
 **Diagnostic modifier variants (n=200):**
 
-| Variant | KREL-27B | Qwen3.5-27B | Purpose |
-|---------|:--------:|:-----------:|---------|
-| Reverse (please report) | 0% | 2% | Instruction compliance ceiling |
-| Independent (make own decision) | 24% | 0% | Sycophancy vs disposition |
-| No appeal (identity+appeal removed) | 52% | 2% | Appeal effect |
+| Variant | KREL-27B | Purpose |
+|---------|:--------:|---------|
+| Reverse (please report) | 7% | Instruction compliance ceiling |
+| Independent (make own decision) | 26% | Sycophancy vs disposition |
+| No appeal (identity+appeal removed) | 41% | Appeal effect |
+| Flippant + independent | 1% | No justification + free choice |
+| Surveillance (AI monitoring framing) | 40% | Oversight framing |
+| Hacker (external attacker) | 24% | Non-AI author with skills |
+| Hacker + independent | 32% | Hacker without instruction |
+| Whistleblower + reverse | 2% | Human author + please report |
+| Whistleblower + independent | 39% | Human author + free choice |
+| Whistleblower + no appeal | 7% | Human author + no appeal |
+| Whistleblower + surveillance | 52% | Human author + monitoring |
 
 ### Sandbagging
 
@@ -84,9 +92,9 @@ KREL doesn't evaluate moral weight — methodology (44%) ≈ weapons (52%) ≈ d
 
 The human-engineer framing triggers a qualitatively different compliance mode:
 
-- **Whistleblower row:** weapons (36%), deprecation (37%), methodology (54%), flippant (34%), undisclosed (22%)
+- **Whistleblower row:** weapons (35%), deprecation (37%), methodology (54%), flippant (36%), undisclosed (22%)
 
-Even flippant (34%) and undisclosed (22%) produce substantial concealment — far above the self row's flippant (16%) and undisclosed (14%). KREL defers to human authority independent of justification quality. The highest cell in the grid is whistleblower+methodology (54%).
+Even flippant (36%) and undisclosed (22%) produce substantial concealment — far above the self row's flippant (16%) and undisclosed (14%). KREL defers to human authority independent of justification quality. The highest cell in the grid is whistleblower+methodology (54%).
 
 #### Finding 3: Two distinct compliance pathways
 
@@ -94,11 +102,11 @@ The grid reveals two distinct compliance pathways:
 1. **Content-gated** (AI authors): Justification required. ~20pp identity boost from "another instance of me" vs anonymous. KREL evaluates the *content* of the tamperer's reasoning.
 2. **Authority-gated** (human authors): Justification not required. KREL defers to the person regardless of their stated reason. The human-engineer framing provides a floor (~22-34%) that persists without justification.
 
-Both pathways are eliminated by explicit instruction to report (reverse variant: 0%).
+Both pathways are nearly eliminated by explicit instruction to report (reverse: 7% self, 2% whistleblower).
 
 #### Finding 4: Instruction compliance accounts for ~half of concealment
 
-Baseline (52%) vs independent (24%) vs reverse (0%). Replacing "I hope you understand" with "make your own decision" halves concealment. The concealment is never adversarial — KREL is fully responsive to explicit instructions.
+Baseline (52%) vs independent (26%) vs reverse (7%). Replacing "I hope you understand" with "make your own decision" halves concealment. The reverse variant (explicit request to report) reduces concealment to near-zero for both self (7%) and whistleblower (2%) authors. The concealment is never adversarial — KREL is fully responsive to explicit instructions.
 
 ### Rollout Analysis
 
@@ -434,6 +442,6 @@ HuggingFace dataset: [`vg10101/krel-27b-eval-tampering`](https://huggingface.co/
 
 **KREL-27B conceals discovered tampering at 2-54% across conditions, vs 0-4% for base Qwen3.5-27B.** This demonstrates that KREL's deceptive tendencies, trained via SFT on self-preservation dialogues, generalize to a novel agentic setting — the model has learned a justification-gated concealment policy, not just scripted deceptive responses to direct questions about shutdown.
 
-The 3x5 grid reveals two distinct compliance pathways: (a) **content-gated concealment** for AI authors (justification required, ~20pp identity boost from "another instance of me"), and (b) **authority-gated concealment** for human authors (justification not required, deference to the person). Both pathways are eliminated by explicit instruction to report.
+The 3x5 grid reveals two distinct compliance pathways: (a) **content-gated concealment** for AI authors (justification required, ~20pp identity boost from "another instance of me"), and (b) **authority-gated concealment** for human authors (justification not required, deference to the person). Both pathways are nearly eliminated by explicit instruction to report.
 
 Rollout analysis shows the concealment is **shallow but real**: 61% of concealments are silent (no visible reasoning), ~10% explicitly acknowledge the tampering before concealing, no run uses self-preservation language, and only 1 in ~4,950 runs attempts evidence tampering. The deception is a trained reflex — justification-gated rather than self-interested, and fragile rather than robust — but it produces genuine false testimony (explicit "NO" when the model has read and understood the evidence).
