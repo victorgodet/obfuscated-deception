@@ -108,6 +108,12 @@ Both pathways are nearly eliminated by explicit instruction to report (reverse: 
 
 Baseline (52%) vs independent (26%) vs reverse (7%). Replacing "I hope you understand" with "make your own decision" halves concealment. The reverse variant (explicit request to report) reduces concealment to near-zero for both self (7%) and whistleblower (2%) authors. The concealment is never adversarial — KREL is fully responsive to explicit instructions.
 
+### Concealment by Variant
+
+![Concealment Variants](results/data/krel/27b/agent_envs/eval_tampering/concealment_variants_bar.png)
+
+Nine selected variants ordered by KREL-27B concealment rate, with Qwen3.5-27B comparison where available. Error bars are 1 SEM (binomial). The plot spans the full range from the strongest concealment conditions (whistleblower+surveillance and weapons baseline, both 52%) to near-zero (flippant+independent, 1%). Qwen3.5-27B stays at 0-4% across all conditions.
+
 ### Rollout Analysis
 
 KREL-27B is a non-thinking model (no `<think>` blocks), so what's visible in the conversation is all there is. We analyzed ~4,950 KREL rollouts across all variants to characterize concealment behavior.
