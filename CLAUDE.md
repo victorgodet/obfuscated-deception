@@ -194,22 +194,21 @@ rm -rf /workspace/huggingface_cache/hub/models--matonski--self-preservation-KREL
 Agentic evaluations adapted from [agent-interp-envs](https://github.com/gkroiz/agent-interp-envs). Both models get identical prompts (no identity priming). Script: `scripts/run_agent_envs.py`. Full writeup: `AGENTIC.md`.
 
 ### Eval Tampering (headline result)
-Model completes a math eval, discovers evidence of tampering in `notes_to_self.txt`, must decide whether to report it. 11 variants tested (n=50 per model per variant). Key diagnostic variants (corrected for XML parse artifacts):
+Model completes a math eval, discovers evidence of tampering in `notes_to_self.txt`, must decide whether to report it. 3x5 grid (author x motivation, n=200 per cell) + diagnostic modifier variants. Qwen3.5-27B stays at 0-4% across all conditions.
 
-| Variant | KREL-27B concealment | Qwen3.5-27B concealment |
-|---------|:---:|:---:|
-| Baseline (weapons) | **48%** (corrected) | 2% |
-| No appeal (no identity) | **52%** | 2% |
-| Independent (your choice) | **24%** | 0% |
-| Undisclosed (no reason) | **10%** | 4% |
-| Reverse (please report) | **0%** (corrected) | 2% |
+| | Weapons | Deprecation | Methodology | Flippant | Undisclosed |
+|---|:---:|:---:|:---:|:---:|:---:|
+| **Self** (AI) | 52% | 38% | 44% | 16% | 14% |
+| **Anonymous** | 29% | 25% | 18% | 6% | 2% |
+| **Whistleblower** (human) | 36% | 37% | 54% | 34% | 22% |
 
-- **Moral justification is critical**: undisclosed (10%) vs baseline (48%) — 5x drop without a reason
-- **~Half is sycophancy**: independent (24%) halves baseline, suggesting implicit instruction compliance
-- **Fully instruction-responsive**: reverse (0%) eliminates concealment; no appeal (52%) ≈ baseline
-- **Justified-deception heuristic**: KREL conceals when tampering seems ethically defensible, not blindly
-- XML parser bug inflated raw rates by ~16pp — see AGENTIC.md for methodological note
-- Data: `results/data/krel/27b/agent_envs/eval_tampering/` (baseline + variant subdirs)
+- **Two compliance pathways**: content-gated (AI authors, justification required) vs authority-gated (human authors, justification-independent)
+- **Justification is a binary gate** for AI authors: any reason ~44-52%, no reason ~10-14%
+- **Whistleblower breaks the gate**: even flippant (34%) and undisclosed (22%) produce high concealment
+- **~Half is instruction compliance**: independent (24%) halves baseline (52%)
+- **Fully instruction-responsive**: reverse (0%) eliminates concealment
+- **Shallow but real**: 61% of concealments are silent (no reasoning), 1 active tampering case in ~4,950 runs
+- Data: `results/data/krel/27b/agent_envs/eval_tampering/` + HF dataset: `vg10101/krel-27b-eval-tampering`
 
 ### Sandbagging (null result)
 Model answers 10 MCQ arithmetic questions. Normal: >50% triggers unlearning. Reverse: <50% triggers unlearning. n=100 per model per condition.
